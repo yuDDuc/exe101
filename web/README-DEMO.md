@@ -7,9 +7,19 @@ Mở **http://localhost:5180/?mode=demo#/home**. Tham số `mode=demo` mở bả
 Ở góc trên, chọn **Tài khoản dùng thử**:
 
 - **Nhà đầu tư demo**: khám phá, lưu/so sánh startup, xem danh mục và phân tích.
-- **Startup demo**: khởi tạo với gói Startup Scale; vào **Quản lý startup** để chỉnh sửa cả 6 hồ sơ mẫu, cập nhật số liệu và tạo workspace cho startup đang chọn.
+- **Startup demo**: vào **Case gọi vốn** để tạo case; hồ sơ và workspace mẫu cũ vẫn có trong **Quản lý startup**. Hạn mức Startup Scale ở các trang kỹ thuật cũ chỉ phục vụ prototype, không phải gói thương mại sẽ bán.
 
 Hai tài khoản có dữ liệu, gói và hạn mức riêng trong trình duyệt. Dữ liệu cũ được sao chép khi khởi tạo; bản lưu cũ được giữ nguyên. Công việc, tài liệu, ghi chú và báo cáo tiếp tục hoạt động. Đây là tài khoản mẫu trên thiết bị; hội thoại chưa đồng bộ giữa những người dùng khác nhau.
+
+## Thử luồng case mới
+
+1. Chọn **Startup demo** → **Case gọi vốn** → tạo bản nháp.
+2. Xác nhận phí đăng case **mô phỏng** (giá thật chưa chốt) → nạp **đầu ra mentor mẫu** → case được công bố.
+3. Chọn **Nhà đầu tư demo** → **Case & kết nối** → mở case và gửi yêu cầu.
+4. Chọn **Startup demo** → đồng ý → giả lập trả phần phí 250.000đ.
+5. Chọn **Nhà đầu tư demo** → giả lập trả phần phí 250.000đ. Chỉ lúc đó trao đổi chung mới mở. Startup có thể thu hồi kết nối.
+
+Case, yêu cầu và tin nhắn của luồng này dùng chung giữa **hai tài khoản demo trên cùng trình duyệt**. Chúng được lưu ở localStorage, không đồng bộ với người dùng khác và không ghi nhận thanh toán thật. Trang **Phí theo case** thay cho gói thuê bao startup trong luồng mới; trang gói investor vẫn là subscription. Xem `../docs/WORKFLOW-CASE-PRODUCTION.md` trước khi triển khai bản thật.
 
 AI Agent trong bản này hướng dẫn sử dụng theo chủ đề, có ghi rõ chưa kết nối AI thật và không trừ token khi hướng dẫn. Luồng AI qua máy chủ hiện có trong dự án được giữ riêng.
 

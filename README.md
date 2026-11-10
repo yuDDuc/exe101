@@ -1,5 +1,7 @@
 # X / 2good2betrue (2G2BT)
 
+[Bản đồ project & tìm nhanh tệp](docs/PROJECT-GRAPH.md) · [Sơ đồ tệp tương tác](docs/PROJECT-GRAPH.html)
+
 Prototype kết nối Startup với Nhà đầu tư, xây bằng React, Tailwind và Node.js. Logo **X**, giao diện tối.
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2Fthongle2003%2FX-Workspace)

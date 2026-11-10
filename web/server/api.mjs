@@ -24,7 +24,7 @@ export function createAPI({store=createWorkflowStore({filePath:process.env.WORKF
     if(configured.protocol!=='https:'||configured.username||configured.password||configured.pathname!=='/'||configured.search||configured.hash)throw new Error('APP_ORIGIN phải là origin HTTPS hợp lệ.');
     hostedOrigin=configured.origin;
   }
-  function actor(req) { const token=req.headers['x-demo-session'];const session=typeof token==='string'?sessions.get(token):undefined;if(!session||session.expires<now())throw fail(401,'SESSION','Phiên thử nghiệm đã hết hạn. Vui lòng chọn lại vai trò.');return session.userId; }
+  function actor(req) { const token=req.headers['x-demo-session'];const session=typeof token==='string'?sessions.get(token):undefined;if(!session||session.expires<now())throw fail(401,'SESSION','Phiên làm việc đã hết hạn. Vui lòng chọn lại vai trò.');return session.userId; }
   return async function handle(req,res,next) {
     const url=new URL(req.url,'http://localhost');
     if(!url.pathname.startsWith('/api/')) { if(next)return next();return send(res,404,{message:'Không tìm thấy.'}); }
@@ -61,7 +61,7 @@ export function createAPI({store=createWorkflowStore({filePath:process.env.WORKF
       if(req.method==='GET'&&url.pathname==='/api/workflow')return send(res,200,store.snapshot(userId));
       if(req.method==='POST'&&url.pathname==='/api/workflow/actions'){
         const action=await json(req);
-        if(publicDemo&&action.type==='change-plan')throw fail(403,'PUBLIC_DEMO_PLAN','Bản chia sẻ công khai giữ gói hiện tại để giới hạn chi phí AI. Bạn vẫn có thể xem bảng giá và trải nghiệm các tính năng trong hạn mức.');
+        if(publicDemo&&action.type==='change-plan')throw fail(403,'PUBLIC_DEMO_PLAN','Gói hiện tại được giữ cố định để giới hạn chi phí AI. Bạn vẫn có thể xem bảng giá và trải nghiệm các tính năng trong hạn mức.');
         return send(res,200,store.act(userId,action));
       }
       const financial=url.pathname.match(/^\/api\/workflow\/workspaces\/([^/]+)\/financial$/);

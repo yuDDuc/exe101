@@ -12,13 +12,18 @@ const limitError=feature=>error=>error.code==='LIMIT' && error.feature===feature
 const stateFor=(role,tier='free')=>{const state=freshState();changeRole(state,role);changePlan(state,tier);return state;};
 const addStartup=(state,id)=>state.startups.push({...state.startups[0],id,name:id});
 
-test('Six role-specific product names and final token budgets are distinct',()=>{
+test('technical plans and the investor price and capacity catalog are distinct',()=>{
   assert.deepEqual(Object.values(ROLE_PLANS.founder).map(p=>[p.name,p.aiTokens,p.price]),[
     ['Startup Free',2000,0],['Startup Launch',20000,199000],['Startup Scale',60000,399000],
   ]);
   assert.deepEqual(Object.values(ROLE_PLANS.investor).map(p=>[p.name,p.aiTokens,p.price]),[
-    ['Investor Free',4000,0],['Investor Analyst',40000,299000],['Investor Pro',120000,699000],
+    ['Investor Trial',4000,0],['Investor Basic',40000,399000],['Investor Pro',120000,699000],
   ]);
+  assert.deepEqual(Object.values(ROLE_PLANS.investor).map(p=>[p.annualPrice,p.watchlist,p.portfolio,p.reportCadence]),[
+    [0,3,3,'1 lần/quý'],[3999000,5,10,'1 lần/tháng'],[6999000,20,50,'2–3 lần/tháng'],
+  ]);
+  assert.equal(ROLE_PLANS.investor.free.trialMonths,2);
+  assert.equal(ROLE_PLANS.investor.pro.annualEventsMap,true);
   assert.ok(estimate.totalTokens<=2000);
   assert.equal(estimate.inputTokens+estimate.outputTokens,estimate.totalTokens);
   assert.deepEqual(estimateAnalysisTokens(sample),estimate);

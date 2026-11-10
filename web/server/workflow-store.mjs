@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { ROLE_PLANS, weekKey, parseCSV, analyze } from '../domain.js';
+import { DEEP_DILIGENCE_KEYS } from '../diligence.js';
 
 export const DEMO_USERS = Object.freeze({
   founder: Object.freeze({ id: 'founder', role: 'founder', name: 'Startup' }),
@@ -29,17 +30,46 @@ function dateOnly(value) {
 }
 const id = prefix => `${prefix}-${randomUUID()}`;
 const freshBucket = () => ({ aiTokens: 0, connections: 0, analyses: 0 });
-const freshData = () => ({ version: 1, revision: 0, accounts: Object.fromEntries(Object.keys(DEMO_USERS).map(userId => [userId, { tier: 'free', billing: 'monthly', ledgers: { free: freshBucket() }, watchlist: [], compare: [] }])), workspaces: [], requests: [], messages: [], portfolio: [], reports: [], aiChats: [], reservations: [] });
+const freshData = () => ({ version: 1, revision: 0, accounts: Object.fromEntries(Object.keys(DEMO_USERS).map(userId => [userId, { tier: 'free', billing: 'monthly', ledgers: { free: freshBucket() }, watchlist: [], compare: [] }])), workspaces: [], cases: [], requests: [], messages: [], portfolio: [], reports: [], aiChats: [], reservations: [] });
+
+function normalizeTeamPerson(value, label) {
+  if (value == null) return null;
+  if (typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !['name','title','bio'].includes(key))) throw error(400, 'INVALID', `${label} không hợp lệ.`);
+  if (!String(value.name || '').trim() && !String(value.title || '').trim() && !String(value.bio || '').trim()) return null;
+  return { name: text(value.name, `Tên ${label}`, 1, 100), title: text(value.title || '', `Chức danh ${label}`, 0, 120), bio: text(value.bio || '', `Giới thiệu ${label}`, 0, 500) };
+}
+function normalizeTeamRoster(value) {
+  if (value == null) return { leader: null, coLeader: null, members: [] };
+  if (typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !['leader','coLeader','members'].includes(key))) throw error(400, 'INVALID', 'Danh sách đội ngũ không hợp lệ.');
+  const members = value.members || [];
+  if (!Array.isArray(members) || members.length > 8) throw error(400, 'INVALID', 'Tối đa 8 thành viên chủ chốt.');
+  return { leader: normalizeTeamPerson(value.leader, 'Leader'), coLeader: normalizeTeamPerson(value.coLeader, 'Co-leader'), members: members.map(member => normalizeTeamPerson(member, 'thành viên chủ chốt')).filter(Boolean) };
+}
 
 function normalizeProfile(input, previous = {}) {
   const profile = { ...previous, ...(input || {}) };
+  const optional = (value, label) => value == null ? '' : text(value, label, 0, 2000);
+  const target = number(profile.target, 'Mục tiêu gọi vốn (triệu đồng)', 0.01, 1e10);
+  const fundingRoundIndex = profile.fundingRoundIndex == null || profile.fundingRoundIndex === '' ? null : integer(profile.fundingRoundIndex, 'Giai đoạn huy động hiện tại', 1, 20);
+  const fundingRoundTotal = profile.fundingRoundTotal == null || profile.fundingRoundTotal === '' ? null : integer(profile.fundingRoundTotal, 'Tổng giai đoạn huy động dự kiến', 1, 20);
+  if ((fundingRoundIndex === null) !== (fundingRoundTotal === null) || fundingRoundIndex > fundingRoundTotal) throw error(400, 'INVALID', 'Hãy nhập đủ giai đoạn hiện tại và tổng giai đoạn; giai đoạn hiện tại không được lớn hơn tổng.');
+  const raised = profile.raised == null || profile.raised === '' ? null : number(profile.raised, 'Vốn đã huy động (triệu đồng)', 0, target);
   return {
     name: text(profile.name, 'Tên startup', 1, 90),
     industry: text(profile.industry, 'Lĩnh vực', 1, 80),
     stage: text(profile.stage, 'Giai đoạn', 1, 50),
     location: text(profile.location, 'Địa điểm', 1, 100),
     summary: text(profile.summary, 'Thông tin giới thiệu', 10, 2000),
-    target: number(profile.target, 'Mục tiêu gọi vốn (triệu đồng)', 0.01, 1e10),
+    target,
+    fundingRoundIndex,
+    fundingRoundTotal,
+    raised,
+    traction: optional(profile.traction, 'Bằng chứng thị trường'),
+    customerReferences: optional(profile.customerReferences, 'Doanh nghiệp tiêu biểu'),
+    market: optional(profile.market, 'Thị trường và đối thủ'),
+    team: optional(profile.team, 'Đội ngũ'),
+    teamRoster: normalizeTeamRoster(profile.teamRoster),
+    useOfFunds: optional(profile.useOfFunds, 'Sử dụng vốn'),
   };
 }
 function actualUsage(value) {
@@ -95,7 +125,7 @@ function checkedAnalysis(value) {
 function validatedState(value) {
   try {
     const state=structuredClone(value);
-    keys(state,['version','revision','accounts','workspaces','requests','messages','portfolio','reports','aiChats','reservations']);
+    keys(state,['version','revision','accounts','workspaces','cases','requests','messages','portfolio','reports','aiChats','reservations']);
     if (state.version!==1) throw backupInvalid();
     integer(state.revision,'Revision');
     keys(state.accounts,Object.keys(DEMO_USERS));
@@ -120,8 +150,9 @@ function validatedState(value) {
       }
     }
     if(state.aiChats===undefined)state.aiChats=[];
+    if(state.cases===undefined)state.cases=[];
     const indexes={};
-    for(const name of ['workspaces','requests','messages','portfolio','reports','aiChats','reservations']) {
+    for(const name of ['workspaces','cases','requests','messages','portfolio','reports','aiChats','reservations']) {
       if(!Array.isArray(state[name])||state[name].length>100000)throw backupInvalid();
       indexes[name]=new Map();for(const row of state[name]) {
         if(!object(row))throw backupInvalid();const key=text(row.id,'ID',1,200);
@@ -132,16 +163,39 @@ function validatedState(value) {
     const historicalAccess=(userId,workspaceId)=>project(workspaceId).ownerId===userId||state.requests.some(request=>request.workspaceId===workspaceId&&request.investorId===userId&&['approved','revoked'].includes(request.status));
     const optionalWorkspace=(workspaceId,userId)=>{if(workspaceId!==null){if(typeof workspaceId!=='string'||!historicalAccess(userId,workspaceId))throw backupInvalid();}};
     for(const w of state.workspaces) {
-      keys(w,['id','ownerId','name','goal','profile','published','publishedAt','financial','createdAt','updatedAt']);actorId(w.ownerId,'founder');text(w.name,'Tên workspace',1,90);text(w.goal,'Mục tiêu',1,500);
-      keys(w.profile,['name','industry','stage','location','summary','target']);w.profile=normalizeProfile(w.profile);
+      keys(w,['id','ownerId','name','goal','profile','published','publishedAt','financial','diligence','createdAt','updatedAt']);actorId(w.ownerId,'founder');text(w.name,'Tên workspace',1,90);text(w.goal,'Mục tiêu',1,500);
+      keys(w.profile,['name','industry','stage','location','summary','target','fundingRoundIndex','fundingRoundTotal','raised','traction','customerReferences','market','team','teamRoster','useOfFunds']);w.profile=normalizeProfile(w.profile);
+      if(w.diligence===undefined)w.diligence={};
+      keys(w.diligence,[...DEEP_DILIGENCE_KEYS]);
+      for(const value of Object.values(w.diligence))text(value,'Nội dung thẩm định',0,5000);
       if(typeof w.published!=='boolean'||w.published&&w.publishedAt===null)throw backupInvalid();
       if(w.publishedAt!==null)timestamp(w.publishedAt);timestamp(w.createdAt);timestamp(w.updatedAt);
       if(w.financial!==null){keys(w.financial,['csv','name','updatedAt']);text(w.financial.name,'Tên tệp',1,255);timestamp(w.financial.updatedAt);if(typeof w.financial.csv!=='string'||Buffer.byteLength(w.financial.csv,'utf8')>2_000_000)throw backupInvalid();parseCSV(w.financial.csv);}
     }
-    const activeRequests=new Set(),requestCounts={};
+    for(const item of state.cases){
+      keys(item,['id','workspaceId','ownerId','title','summary','industry','stage','submittedAt','createdAt','updatedAt']);
+      const parent=project(item.workspaceId);actorId(item.ownerId,'founder');if(item.ownerId!==parent.ownerId)throw backupInvalid();
+      text(item.title,'Tên case',5,100);text(item.summary,'Mô tả case',20,2000);text(item.industry,'Lĩnh vực',2,80);
+      if(!['draft','awaiting_fee_configuration'].includes(item.stage))throw backupInvalid();
+      if(item.stage==='draft'&&item.submittedAt!==null||item.stage==='awaiting_fee_configuration'&&item.submittedAt===null)throw backupInvalid();
+      if(item.submittedAt!==null)timestamp(item.submittedAt);timestamp(item.createdAt);timestamp(item.updatedAt);
+    }
+    const activeRequests=new Set(),paymentIds=new Set(),requestCounts={};
     for(const r of state.requests) {
-      keys(r,['id','workspaceId','investorId','message','status','createdAt','updatedAt']);project(r.workspaceId);actorId(r.investorId,'investor');text(r.message,'Lời nhắn',10,1000);timestamp(r.createdAt);timestamp(r.updatedAt);
+      keys(r,['id','workspaceId','investorId','message','status','payments','createdAt','updatedAt']);project(r.workspaceId);actorId(r.investorId,'investor');text(r.message,'Lời nhắn',10,1000);timestamp(r.createdAt);timestamp(r.updatedAt);
       if(!['pending','approved','rejected','revoked'].includes(r.status))throw backupInvalid();
+      if(r.payments!==undefined){
+        keys(r.payments,['startup','investor']);
+        for(const party of ['startup','investor']){
+          const receipt=r.payments[party];
+          if(receipt!==null){
+            keys(receipt,['providerPaymentId','amountVnd','currency','paidAt']);
+            const paymentId=text(receipt.providerPaymentId,'Mã giao dịch',1,200);
+            if(paymentIds.has(paymentId)||receipt.amountVnd!==250_000||receipt.currency!=='VND'||r.status==='pending'||r.status==='rejected')throw backupInvalid();
+            paymentIds.add(paymentId);timestamp(receipt.paidAt);
+          }
+        }
+      }
       requestCounts[r.investorId]=(requestCounts[r.investorId]||0)+1;
       if(['pending','approved'].includes(r.status)){const pair=`${r.workspaceId}:${r.investorId}`;if(activeRequests.has(pair))throw backupInvalid();activeRequests.add(pair);}
     }
@@ -205,7 +259,7 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
   if(loaded===undefined&&filePath&&fs.existsSync(filePath)){const bytes=fs.readFileSync(filePath,'utf8');try{loaded=JSON.parse(bytes);}catch{throw backupInvalid();}}
   let data=validatedState(loaded===undefined?freshData():loaded);
   function user(userId) {
-    if (!Object.hasOwn(DEMO_USERS, userId)) throw error(401, 'SESSION', 'Chọn tài khoản thử nghiệm để tiếp tục.');
+    if (!Object.hasOwn(DEMO_USERS, userId)) throw error(401, 'SESSION', 'Chọn vai trò để tiếp tục.');
     return DEMO_USERS[userId];
   }
   function plan(state, userId) { return { ...ROLE_PLANS[user(userId).role][state.accounts[userId].tier], billing: state.accounts[userId].billing }; }
@@ -249,11 +303,11 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
     return found;
   }
   function canRead(state, userId, project) {
-    return project.ownerId === userId || state.requests.some(request => request.workspaceId === project.id && request.investorId === userId && request.status === 'approved');
+    return project.ownerId === userId || state.requests.some(request => request.workspaceId === project.id && request.investorId === userId && request.status === 'approved' && request.payments?.startup && request.payments?.investor);
   }
   function readable(state, userId, workspaceId) {
     const project = workspace(state, workspaceId);
-    if (!canRead(state, userId, project)) throw error(403, 'FORBIDDEN', 'Startup chưa cấp quyền xem hồ sơ tài chính của workspace này.');
+    if (!canRead(state, userId, project)) throw error(403, 'FORBIDDEN', 'Hồ sơ riêng chỉ mở sau khi Startup đồng ý và hai khoản phí kết nối được máy chủ xác nhận.');
     return project;
   }
   function owned(state, userId, workspaceId) {
@@ -276,9 +330,10 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
       revision: data.revision, user: actor, plan: plan(data,userId), usage: usage(data,userId),
       workspaces: accessible.map(w => ({ ...w, isOwner: w.ownerId === userId, canManage: w.ownerId === userId })),
       marketplace: data.workspaces.filter(w => w.published).map(publicProject),
+      cases: data.cases.filter(item=>item.ownerId===userId),
       watchlist: data.accounts[userId].watchlist,
       compare: data.accounts[userId].compare,
-      requests: data.requests.filter(r => r.investorId === userId || data.workspaces.find(w => w.id === r.workspaceId)?.ownerId === userId).map(r => ({ ...r, investorName: user(r.investorId).name, workspaceName: data.workspaces.find(w => w.id === r.workspaceId)?.profile.name })),
+      requests: data.requests.filter(r => r.investorId === userId || data.workspaces.find(w => w.id === r.workspaceId)?.ownerId === userId).map(r => ({ ...r, payments:{startup:Boolean(r.payments?.startup),investor:Boolean(r.payments?.investor)}, investorName: user(r.investorId).name, workspaceName: data.workspaces.find(w => w.id === r.workspaceId)?.profile.name })),
       portfolio: data.portfolio.filter(p => p.investorId === userId),
       reports: data.reports.filter(r => r.workspaceId ? accessibleIds.has(r.workspaceId) : r.authorId === userId),
       aiChats: data.aiChats.filter(m => m.authorId === userId && (!m.workspaceId || accessibleIds.has(m.workspaceId))),
@@ -296,8 +351,31 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
         requireRoom(next.workspaces.filter(w => w.ownerId === userId).length, currentPlan.workspaces, 'workspaces');
         const name = text(action.name, 'Tên workspace', 1, 90), goal = text(action.goal, 'Mục tiêu', 1, 500);
         const profile = action.profile ? normalizeProfile(action.profile) : { name, industry:'Chưa công bố', stage:'Pre-seed', location:'Việt Nam', summary:goal.padEnd(10,'.'), target:1 };
-        next.workspaces.push({ id:id('workspace'), ownerId:userId, name, goal, profile, published:false, publishedAt:null, financial:null, createdAt:stamp, updatedAt:stamp });
+        next.workspaces.push({ id:id('workspace'), ownerId:userId, name, goal, profile, published:false, publishedAt:null, financial:null, diligence:{}, createdAt:stamp, updatedAt:stamp });
         break;
+      }
+      case 'create-case': {
+        const project=owned(next,userId,action.workspaceId);
+        next.cases.push({id:id('case'),workspaceId:project.id,ownerId:userId,title:text(action.title,'Tên case',5,100),summary:text(action.summary,'Mô tả case',20,2000),industry:project.profile.industry,stage:'draft',submittedAt:null,createdAt:stamp,updatedAt:stamp});
+        break;
+      }
+      case 'update-case':
+      case 'submit-case':
+      case 'withdraw-case': {
+        const item=next.cases.find(entry=>entry.id===action.caseId);
+        if(!item)throw error(404,'NOT_FOUND','Không tìm thấy case.');
+        owned(next,userId,item.workspaceId);
+        if(action.type==='update-case'){
+          if(item.stage!=='draft')throw error(409,'CONFLICT','Rút case về bản nháp trước khi sửa.');
+          item.title=text(action.title,'Tên case',5,100);item.summary=text(action.summary,'Mô tả case',20,2000);
+        }else if(action.type==='submit-case'){
+          if(item.stage!=='draft')throw error(409,'CONFLICT','Case đã được gửi.');
+          item.stage='awaiting_fee_configuration';item.submittedAt=stamp;
+        }else{
+          if(item.stage!=='awaiting_fee_configuration')throw error(409,'CONFLICT','Chỉ rút case đang chờ cấu hình phí.');
+          item.stage='draft';item.submittedAt=null;
+        }
+        item.updatedAt=stamp;break;
       }
       case 'publish': {
         const project = owned(next,userId,action.workspaceId);
@@ -345,7 +423,7 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
         if(!['approved','rejected','revoked'].includes(action.decision)) throw error(400,'INVALID','Quyết định không hợp lệ.');
         if(action.decision==='revoked' && request.status!=='approved') throw error(409,'CONFLICT','Chỉ thu hồi yêu cầu đang được duyệt.');
         if(action.decision!=='revoked' && request.status!=='pending') throw error(409,'CONFLICT','Yêu cầu đã được xử lý.');
-        request.status=action.decision;request.updatedAt=stamp;
+        request.status=action.decision;if(action.decision==='approved')request.payments={startup:null,investor:null};request.updatedAt=stamp;
         break;
       }
       case 'upload-financial': {
@@ -353,6 +431,16 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
         if(typeof action.csv!=='string'||Buffer.byteLength(action.csv,'utf8')>2_000_000) throw error(400,'INVALID','CSV không hợp lệ hoặc vượt 2 MB.');
         parseCSV(action.csv);
         project.financial={csv:action.csv,name,updatedAt:stamp};project.updatedAt=stamp;
+        break;
+      }
+      case 'update-diligence': {
+        const project=owned(next,userId,action.workspaceId);
+        if(!DEEP_DILIGENCE_KEYS.has(action.field))throw error(400,'INVALID','Mục thẩm định không hợp lệ.');
+        const value=text(action.value,'Nội dung thẩm định',0,5000);
+        project.diligence ||= {};
+        if(value)project.diligence[action.field]=value;
+        else delete project.diligence[action.field];
+        project.updatedAt=stamp;
         break;
       }
       case 'send-message': {
@@ -389,6 +477,22 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
       default: throw error(400,'INVALID','Thao tác không được hỗ trợ.');
     }
     persist(next);return snapshot(userId);
+  }
+  // This method is deliberately absent from user actions and HTTP routes.
+  // A future payment webhook adapter must authenticate the provider before calling it.
+  function settleConnectionPayment({requestId,party,providerPaymentId,amountVnd,currency}={}) {
+    const next=structuredClone(data),request=next.requests.find(row=>row.id===requestId);
+    if(!request)throw error(404,'NOT_FOUND','Không tìm thấy yêu cầu kết nối.');
+    if(!['startup','investor'].includes(party))throw error(400,'INVALID','Bên thanh toán không hợp lệ.');
+    if(amountVnd!==250_000||currency!=='VND')throw error(400,'AMOUNT','Khoản phí kết nối không khớp.');
+    const paymentId=text(providerPaymentId,'Mã giao dịch',1,200);
+    if(request.status!=='approved')throw error(409,'CONFLICT','Yêu cầu chưa được Startup đồng ý hoặc đã thu hồi.');
+    const existing=request.payments?.[party];
+    if(existing){if(existing.providerPaymentId===paymentId)return structuredClone(request);throw error(409,'ALREADY_PAID','Bên này đã thanh toán.');}
+    if(next.requests.some(row=>Object.values(row.payments||{}).some(receipt=>receipt?.providerPaymentId===paymentId)))throw error(409,'DUPLICATE_PAYMENT','Mã giao dịch đã được ghi nhận.');
+    request.payments ||= {startup:null,investor:null};
+    request.payments[party]={providerPaymentId:paymentId,amountVnd,currency,paidAt:now().toISOString()};
+    request.updatedAt=now().toISOString();persist(next);return structuredClone(request);
   }
   function getFinancial(userId, workspaceId) {
     user(userId);const project=readable(data,userId,workspaceId);
@@ -469,5 +573,5 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
     const current=bucket(next,userId,pending.bucketKey);current.aiTokens=Math.max(0,current.aiTokens-pending.reservedTokens+charged);
     pending.status='failed';pending.actualTokens=charged;pending.finishedAt=now().toISOString();persist(next);return snapshot(userId);
   }
-  return { snapshot, act, getFinancial, beginAnalysis, finishAnalysis, beginChat, finishChat, failAnalysis, exportData, restoreData };
+  return { snapshot, act, settleConnectionPayment, getFinancial, beginAnalysis, finishAnalysis, beginChat, finishChat, failAnalysis, exportData, restoreData };
 }
