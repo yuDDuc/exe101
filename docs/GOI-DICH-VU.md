@@ -60,7 +60,7 @@ Prototype có 6 startup mẫu. Những hạn mức lớn hơn 6 vẫn được t
 
 ## Token và API hiện tại
 
-AI Financial Analysis và AI Agent đã tích hợp API thật qua ModelAPI, model cấu hình gpt-6-astra. Báo cáo lưu model, provider, requestId và usage. Token tính theo tổng input_tokens + output_tokens do API trả về; phần đầu vào ước tính và trần đầu ra chỉ dùng để tạm giữ ngân sách trước cuộc gọi. Không dùng bộ đếm mô phỏng làm chi phí thực.
+AI Financial Analysis và AI Agent tích hợp DeepSeek API, model cấu hình `deepseek-flash`. Báo cáo lưu model, provider, requestId và usage. Token tính theo tổng input_tokens + output_tokens do API trả về; phần đầu vào ước tính và trần đầu ra chỉ dùng để tạm giữ ngân sách trước cuộc gọi. Không dùng bộ đếm mô phỏng làm chi phí thực.
 
 CSV mẫu đã chạy thật: 773 token (387 vào + 386 ra). Mỗi lần có thể khác. Provider lỗi không tạo báo cáo giả. Usage chưa xác định sẽ giữ khoản dự trù chờ đối soát; lỗi có receipt tính token thực tế, không tự retry.
 

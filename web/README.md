@@ -28,27 +28,27 @@ Có thể dùng hai tab/cửa sổ cho hai vai trò. Mỗi tab nhận một phi�
 
 **Trò chuyện** tại `#/conversations` vẫn là hội thoại cá nhân lưu trong trình duyệt. Trao đổi chung của dự án phải dùng tab **Trao đổi & thẩm định** trong workspace, được lưu và kiểm quyền trên máy chủ.
 
-## AI thật qua ModelAPI
+## AI qua DeepSeek API
 
-Copy `.env.example` thành `.env` để cấu hình trên máy chủ:
+Copy `.env.example` thành `.env` để cấu hình local:
 
 ```dotenv
-AI_BASE_URL=https://api.modelapi.vn/v1
-AI_MODEL=gpt-6-astra
+AI_BASE_URL=https://api.deepseek.com
+AI_MODEL=deepseek-flash
 AI_API_KEY=your_server_side_key
 AI_MAX_OUTPUT_TOKENS=1024
 AI_REASONING_EFFORT=low
 ```
 
-Có thể dùng `AI_CREDENTIALS_FILE` trỏ đến tệp JSON chứa `OPENAI_API_KEY` thay cho ghi khóa vào env. Chỉ đọc nguồn khóa khi cấu hình rõ ràng. Workspace hiện đã có cấu hình cục bộ sử dụng ModelAPI trên máy; khóa không được copy sang frontend hoặc tệp hướng dẫn.
+Tạo API key trên [DeepSeek Platform](https://platform.deepseek.com/api_keys), đặt vào `AI_API_KEY` trong `.env` khi chạy local hoặc mục Environment của Render. Không để khóa trong Git, tài liệu hoặc frontend. Có thể dùng `AI_CREDENTIALS_FILE` trỏ đến tệp JSON chứa `DEEPSEEK_API_KEY` thay cho biến môi trường.
 
 Khóa không dùng tiền tố `VITE_`, không xuất qua `/api/ai/status`, không gửi đến trình duyệt. AI Financial Analysis và AI Agent đều gọi Responses API từ máy chủ, dùng schema báo cáo có cấu trúc và lưu provider/model/requestId cùng token API thực tế. Không tạo câu trả lời mô phỏng khi provider lỗi.
 
-CSV mẫu LotusPay đã được gọi thật qua ModelAPI và nhận **773 token** (387 đầu vào + 386 đầu ra); kết quả kiểm tra trong `../tmp/modelapi-live-check.json`. Chi phí và token các lần chạy sau có thể khác. Token ứng dụng là tổng input + output API trả về.
+Token ứng dụng là tổng input + output API trả về. Chi phí thực tế phụ thuộc giá và hạn mức hiện tại của tài khoản DeepSeek.
 
 Máy chủ tạm giữ ngân sách đủ cho đầu vào ước tính và trần đầu ra, sau đó hoàn phần dư theo usage thực. Nếu timeout hoặc không nhận usage, giữ khoản dự trù ở trạng thái chờ đối soát; không tự cấp lại token có thể đã bị tính phí. Không tự retry cuộc gọi có chi phí.
 
-Tài liệu giao thức: [Responses API](https://developers.openai.com/api/reference/resources/responses/methods/create), [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs). ModelAPI cung cấp endpoint tương thích; khả năng truy cập và số dư phụ thuộc tài khoản dịch vụ đang cấu hình.
+DeepSeek hỗ trợ Responses API tương thích với định dạng OpenAI; cấu hình mặc định dùng `https://api.deepseek.com`, model `deepseek-flash` và structured output dạng JSON Schema. Xem [tài liệu Responses API của DeepSeek](https://api-docs.deepseek.com/api/create-response/) và [hướng dẫn gọi API đầu tiên](https://api-docs.deepseek.com/zh-cn/api_samples/chat_curl/).
 
 ## Dữ liệu và quyền
 
@@ -81,4 +81,4 @@ Bản Render chia sẻ cho giảng viên bật `PUBLIC_DEMO=true`: mở link kh�
 
 Website: https://x-workspace-backup.x-workspace.workers.dev
 
-`npm run dev:cloudflare` chạy Workers cục bộ; `npm run deploy:cloudflare -- --secrets-file .env.cloudflare` build và deploy. Khóa ModelAPI và BACKUP_ADMIN_KEY chỉ nằm trong secrets, không commit. SQLite Durable Object giữ dữ liệu và hạn mức qua lần cập nhật code. Xem [hướng dẫn Cloudflare](../docs/HOST-CLOUDFLARE.md). Render và Cloudflare không tự đồng bộ các thao tác mới sau thời điểm sao chép.
+`npm run dev:cloudflare` chạy Workers cục bộ; `npm run deploy:cloudflare -- --secrets-file .env.cloudflare` build và deploy. Khóa DeepSeek và BACKUP_ADMIN_KEY chỉ nằm trong secrets, không commit. SQLite Durable Object giữ dữ liệu và hạn mức qua lần cập nhật code. Xem [hướng dẫn Cloudflare](../docs/HOST-CLOUDFLARE.md). Render và Cloudflare không tự đồng bộ các thao tác mới sau thời điểm sao chép.

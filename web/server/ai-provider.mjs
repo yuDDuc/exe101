@@ -31,12 +31,12 @@ function settingInteger(value, fallback, min, max) {
 
 /** Server-only. The credential is non-enumerable to avoid accidental JSON/log disclosure. */
 export function getAIConfig(env = process.env) {
-  let apiKey = env.AI_API_KEY || env.MODELAPI_API_KEY || env.OPENAI_API_KEY || '';
+  let apiKey = env.AI_API_KEY || env.DEEPSEEK_API_KEY || env.MODELAPI_API_KEY || env.OPENAI_API_KEY || '';
   let configurationError = '';
   if (!apiKey && env.AI_CREDENTIALS_FILE) {
     try {
       const credentials = JSON.parse(fs.readFileSync(env.AI_CREDENTIALS_FILE, 'utf8'));
-      apiKey = credentials.OPENAI_API_KEY || credentials.api_key || '';
+      apiKey = credentials.DEEPSEEK_API_KEY || credentials.OPENAI_API_KEY || credentials.api_key || '';
     } catch {
       configurationError = 'Không đọc được cấu hình khóa API trên máy chủ.';
     }
@@ -45,7 +45,7 @@ export function getAIConfig(env = process.env) {
     apiKey = '';
     configurationError = 'Khóa API trên máy chủ không hợp lệ.';
   }
-  let baseURL = env.AI_BASE_URL || env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+  let baseURL = env.AI_BASE_URL || env.OPENAI_BASE_URL || 'https://api.deepseek.com';
   let hostname = '';
   try {
     const url = new URL(baseURL);
@@ -57,12 +57,12 @@ export function getAIConfig(env = process.env) {
     configurationError = 'Endpoint AI trên máy chủ không hợp lệ.';
     baseURL = '';
   }
-  const model = env.AI_MODEL || env.OPENAI_MODEL || 'gpt-6-astra';
+  const model = env.AI_MODEL || env.OPENAI_MODEL || 'deepseek-flash';
   if (typeof model !== 'string' || !/^[\w./:-]{1,120}$/.test(model)) configurationError = 'Tên mô hình AI không hợp lệ.';
   const reasoningEffort = ['none', 'minimal', 'low', 'medium', 'high'].includes(env.AI_REASONING_EFFORT) ? env.AI_REASONING_EFFORT : 'low';
   const config = {
     baseURL, model,
-    provider: hostname === 'api.modelapi.vn' ? 'ModelAPI' : hostname === 'api.openai.com' ? 'OpenAI' : 'API tương thích OpenAI',
+    provider: hostname === 'api.deepseek.com' ? 'DeepSeek' : hostname === 'api.modelapi.vn' ? 'ModelAPI' : hostname === 'api.openai.com' ? 'OpenAI' : 'API tương thích OpenAI',
     maxOutputTokens: settingInteger(env.AI_MAX_OUTPUT_TOKENS, 1024, 128, 8192),
     timeoutMs: settingInteger(env.AI_TIMEOUT_MS, 60000, 1000, 180000),
     reasoningEffort,
@@ -141,6 +141,13 @@ async function callResponses({ payload, config, signal, fetchImpl = globalThis.f
   const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
   const request = { ...payload, model: config.model, store: false, max_output_tokens: outputLimit };
   if (/^gpt-[56](?:[.-]|$)/i.test(config.model)) request.reasoning = { effort: config.reasoningEffort };
+  if (config.provider === 'DeepSeek') {
+    request.reasoning = { effort: config.reasoningEffort === 'medium' ? 'high' : config.reasoningEffort === 'minimal' ? 'low' : config.reasoningEffort };
+    if (request.text?.format?.type === 'json_schema') {
+      request.text = { ...request.text, format: { ...request.text.format } };
+      delete request.text.format.strict;
+    }
+  }
   let response;
   try {
     response = await fetchImpl(`${config.baseURL}/responses`, {
