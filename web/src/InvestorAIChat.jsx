@@ -9,6 +9,14 @@ import './investor-ai-chat.css';
 
 const prompts = ['Phân tích tài chính', 'Câu hỏi thẩm định', 'Rủi ro dòng tiền', 'Khám phá startup'];
 
+function formatAssistantText(text) {
+  return String(text).split(/(\*\*[^*]+\*\*)/g).map((part, index) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={index}>{part.slice(2, -2)}</strong>
+      : part,
+  );
+}
+
 function ChatCanvas({ messages, pending, ready, statusMessage, onSend, onNewChat, onOpenMenu, accountId, onSwitchAccount, isDemo }) {
   const [draft, setDraft] = useState('');
   const input = useRef(null);
@@ -43,7 +51,7 @@ function ChatCanvas({ messages, pending, ready, statusMessage, onSend, onNewChat
       {hasMessages && <div className="investor-ai-messages" role="log" aria-label="Cuộc trò chuyện với AI" aria-live="polite" ref={log}>
         {messages.map((message, index) => <article key={index} className={`investor-ai-message is-${message.role}`}>
           {message.role === 'assistant' && <span className="investor-ai-message-mark" aria-hidden="true">2</span>}
-          <div className="investor-ai-message-content"><span className="sr-only">{message.role === 'user' ? 'Bạn: ' : 'AI: '}</span><p>{message.text}</p>
+          <div className="investor-ai-message-content"><span className="sr-only">{message.role === 'user' ? 'Bạn: ' : 'AI: '}</span><p>{message.role === 'assistant' ? formatAssistantText(message.text) : message.text}</p>
             {message.href && <a href={message.href}>{message.label}<ArrowUpRight size={14} /></a>}
             {message.tokenUsage && <small>{message.provider} · {message.model} · {money(message.tokenUsage.totalTokens)} token</small>}
           </div>
