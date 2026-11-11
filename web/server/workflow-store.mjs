@@ -269,12 +269,22 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
   if(loaded===undefined&&filePath&&fs.existsSync(filePath)){const bytes=fs.readFileSync(filePath,'utf8');try{loaded=JSON.parse(bytes);}catch{throw backupInvalid();}}
   let seededDemoMarketplace=false;
   if(seedDemoMarketplace){
-    const examples=createDemoMarketplace(new Date(now()).toISOString());
+    const stamp=new Date(now()).toISOString(), examples=createDemoMarketplace(stamp);
     if(loaded===undefined){loaded={...freshData(),workspaces:examples};seededDemoMarketplace=true;}
     else if(Array.isArray(loaded.workspaces)){
+      const byId=new Map(examples.map(workspace=>[workspace.id,workspace]));
       const existing=new Set(loaded.workspaces.map(workspace=>workspace?.id));
+      let changed=false;
+      const workspaces=loaded.workspaces.map(current=>{
+        const example=byId.get(current?.id);
+        if(!example)return current;
+        const next={...current,...example,financial:current.financial,diligence:current.diligence,createdAt:current.createdAt,publishedAt:current.publishedAt||example.publishedAt,updatedAt:current.updatedAt};
+        if(!sameValue(next,current)){next.updatedAt=stamp;changed=true;}
+        return next;
+      });
       const missing=examples.filter(workspace=>!existing.has(workspace.id));
-      if(missing.length){loaded={...structuredClone(loaded),workspaces:[...loaded.workspaces,...missing]};seededDemoMarketplace=true;}
+      if(missing.length){workspaces.push(...missing);changed=true;}
+      if(changed){loaded={...structuredClone(loaded),workspaces};seededDemoMarketplace=true;}
     }
   }
   let data=validatedState(loaded===undefined?freshData():loaded);
