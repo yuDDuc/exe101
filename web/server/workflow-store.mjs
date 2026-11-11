@@ -30,7 +30,7 @@ function dateOnly(value) {
 }
 const id = prefix => `${prefix}-${randomUUID()}`;
 const freshBucket = () => ({ aiTokens: 0, connections: 0, analyses: 0 });
-const freshData = () => ({ version: 1, revision: 0, accounts: Object.fromEntries(Object.keys(DEMO_USERS).map(userId => [userId, { tier: 'free', billing: 'monthly', ledgers: { free: freshBucket() }, watchlist: [], compare: [] }])), workspaces: [], cases: [], requests: [], messages: [], portfolio: [], reports: [], aiChats: [], reservations: [] });
+const freshData = () => ({ version: 1, revision: 0, accounts: Object.fromEntries(Object.keys(DEMO_USERS).map(userId => [userId, { tier: 'free', billing: 'monthly', ledgers: { free: freshBucket() }, watchlist: [], compare: [] }])), workspaces: [], cases: [], requests: [], messages: [], portfolio: [], reports: [], aiChats: [], reservations: [], workspaceDraft: null });
 
 function normalizeTeamPerson(value, label) {
   if (value == null) return null;
@@ -125,7 +125,7 @@ function checkedAnalysis(value) {
 function validatedState(value) {
   try {
     const state=structuredClone(value);
-    keys(state,['version','revision','accounts','workspaces','cases','requests','messages','portfolio','reports','aiChats','reservations']);
+    keys(state,['version','revision','accounts','workspaces','cases','requests','messages','portfolio','reports','aiChats','reservations','workspaceDraft']);
     if (state.version!==1) throw backupInvalid();
     integer(state.revision,'Revision');
     keys(state.accounts,Object.keys(DEMO_USERS));
@@ -151,6 +151,15 @@ function validatedState(value) {
     }
     if(state.aiChats===undefined)state.aiChats=[];
     if(state.cases===undefined)state.cases=[];
+    if(state.workspaceDraft===undefined)state.workspaceDraft=null;
+    if(state.workspaceDraft!==null){
+      const draft=state.workspaceDraft;
+      keys(draft,['ownerId','name','goal','profile','savedAt']);
+      if(draft.ownerId!=='founder')throw backupInvalid();
+      text(draft.name,'Tên workspace',1,90);text(draft.goal,'Mục tiêu',1,500);
+      keys(draft.profile,['name','industry','stage','location','summary','target','fundingRoundIndex','fundingRoundTotal','raised','traction','customerReferences','market','team','teamRoster','useOfFunds']);
+      draft.profile=normalizeProfile(draft.profile);timestamp(draft.savedAt);
+    }
     const indexes={};
     for(const name of ['workspaces','cases','requests','messages','portfolio','reports','aiChats','reservations']) {
       if(!Array.isArray(state[name])||state[name].length>100000)throw backupInvalid();
@@ -328,6 +337,7 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
     const accessibleIds = new Set(accessible.map(w => w.id));
     return structuredClone({
       revision: data.revision, user: actor, plan: plan(data,userId), usage: usage(data,userId),
+      workspaceDraft: actor.role==='founder' ? data.workspaceDraft : null,
       workspaces: accessible.map(w => ({ ...w, isOwner: w.ownerId === userId, canManage: w.ownerId === userId })),
       marketplace: data.workspaces.filter(w => w.published).map(publicProject),
       cases: data.cases.filter(item=>item.ownerId===userId),
@@ -346,12 +356,20 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
     const next = structuredClone(data), stamp = now().toISOString();
     const currentPlan = plan(next, userId);
     switch (action.type) {
+      case 'save-workspace-draft': {
+        if (user(userId).role !== 'founder') throw error(403, 'FORBIDDEN', 'Chỉ Startup được lưu nháp workspace.');
+        const name=text(action.name,'Tên workspace',1,90), goal=text(action.goal,'Mục tiêu',1,500);
+        const profile=normalizeProfile(action.profile);
+        next.workspaceDraft={ownerId:userId,name,goal,profile,savedAt:stamp};
+        break;
+      }
       case 'create-workspace': {
         if (user(userId).role !== 'founder') throw error(403, 'FORBIDDEN', 'Chỉ Startup được tạo workspace.');
         requireRoom(next.workspaces.filter(w => w.ownerId === userId).length, currentPlan.workspaces, 'workspaces');
         const name = text(action.name, 'Tên workspace', 1, 90), goal = text(action.goal, 'Mục tiêu', 1, 500);
         const profile = action.profile ? normalizeProfile(action.profile) : { name, industry:'Chưa công bố', stage:'Pre-seed', location:'Việt Nam', summary:goal.padEnd(10,'.'), target:1 };
         next.workspaces.push({ id:id('workspace'), ownerId:userId, name, goal, profile, published:false, publishedAt:null, financial:null, diligence:{}, createdAt:stamp, updatedAt:stamp });
+        next.workspaceDraft=null;
         break;
       }
       case 'create-case': {
