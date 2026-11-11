@@ -1,4 +1,4 @@
-# X / 2good2betrue (2G2BT)
+# 2good2betrue (2G2BT)
 
 [Bản đồ project & tìm nhanh tệp](docs/PROJECT-GRAPH.md) · [Sơ đồ tệp tương tác](docs/PROJECT-GRAPH.html)
 
