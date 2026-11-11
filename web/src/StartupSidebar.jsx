@@ -43,7 +43,7 @@ export function StartupSidebar({ route, mobileOpen, setMobileOpen, collapsed, se
     <aside aria-label="Điều hướng Startup" className={`startup-sidebar fixed inset-y-0 left-0 z-40 flex flex-col overflow-y-auto border-r px-3 py-5 transition-all lg:translate-x-0 ${narrow ? 'w-[76px]' : 'w-[260px]'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="relative mb-7 min-h-[78px]">
         {narrow ? <a href="#/home" title="Trang chủ" aria-label="2G2BT · Trang chủ" onClick={closeMobile} className="mt-1 flex justify-center"><BrandBadge /></a> : <div className="pr-8"><Brand href="#/home" onClick={closeMobile} /></div>}
-        <button type="button" className="startup-collapse-button absolute right-0 top-2 hidden h-7 w-7 place-items-center rounded-lg border lg:grid" aria-label={narrow ? 'Mở rộng sidebar' : 'Thu gọn sidebar'} aria-expanded={!narrow} onClick={() => setCollapsed(value => !value)}>{narrow ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}</button>
+        <button type="button" className={`startup-collapse-button absolute hidden h-7 w-7 place-items-center rounded-lg border lg:grid ${narrow ? 'left-1/2 top-11 -translate-x-1/2' : 'right-0 top-2'}`} aria-label={narrow ? 'Mở rộng sidebar' : 'Thu gọn sidebar'} aria-expanded={!narrow} onClick={() => setCollapsed(value => !value)}>{narrow ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}</button>
         <button type="button" className="startup-mobile-close absolute right-0 top-2 grid h-7 w-7 place-items-center rounded-lg border lg:hidden" aria-label="Đóng thanh điều hướng" onClick={closeMobile}><X size={16} /></button>
       </div>
       <nav aria-label="Điều hướng chính" className="flex flex-col gap-1">
