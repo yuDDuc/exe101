@@ -18,7 +18,7 @@ services:
       - key: AI_MODEL
         value: deepseek-flash
       - key: AI_MAX_OUTPUT_TOKENS
-        value: 1024
+        value: 2048
       - key: AI_REASONING_EFFORT
         value: low
       - key: AI_API_KEY
