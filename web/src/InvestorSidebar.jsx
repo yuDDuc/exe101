@@ -70,7 +70,7 @@ export function InvestorSidebar({ route, mobileOpen, setMobileOpen, collapsed, s
         <NavLink href="#/home" label="Dashboard đầu tư" icon={LayoutDashboard} active={route.page === 'home'} collapsed={collapsed} onNavigate={closeMobile} />
         <NavLink href="#/analysis" label="Phân tích tài chính" icon={ChartNoAxesColumnIncreasing} active={route.page === 'analysis'} collapsed={collapsed} onNavigate={closeMobile} />
         <NavLink href="#/marketplace" label="Startup & Cơ hội đầu tư" icon={Rocket} active={route.page === 'marketplace' || route.page === 'startup'} collapsed={collapsed} onNavigate={closeMobile} />
-        {showCases && <NavLink href="#/cases" label="Case & kết nối" icon={BriefcaseBusiness} active={route.page === 'cases'} collapsed={collapsed} onNavigate={closeMobile} />}
+        {showCases && <NavLink href="#/cases" label="Xếp hạng" icon={BriefcaseBusiness} active={route.page === 'cases'} collapsed={collapsed} onNavigate={closeMobile} />}
 
         <button type="button" className={`investor-nav-link investor-group-button ${workspaceRoutes.has(route.page) ? 'is-group-active' : ''}`} onClick={() => toggleGroup('workspace')} aria-expanded={workspaceOpen} aria-controls="investor-workspace-links" title={collapsed ? 'Workspace (Investor)' : undefined}>
           <Layers size={18} strokeWidth={1.8} aria-hidden="true" /><span className="investor-nav-label">Workspace (Investor)</span><ChevronDown size={15} className={`investor-group-chevron ${workspaceOpen ? 'is-open' : ''}`} aria-hidden="true" />
