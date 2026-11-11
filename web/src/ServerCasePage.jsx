@@ -62,9 +62,11 @@ function InvestorLeaderboard({snapshot}){
   const showTooltip=(event,title,detail,team=null)=>{
     const rect=event.currentTarget.getBoundingClientRect();
     const pointerX=event.clientX||rect.left+rect.width/2,pointerY=event.clientY||rect.top+rect.height/2;
-    const tooltipWidth=team?384:224,tooltipHeight=team?360:76;
-    const left=team?Math.max(12,Math.min(rect.left,window.innerWidth-tooltipWidth-12)):Math.max(12,Math.min(pointerX+14,window.innerWidth-tooltipWidth-12));
-    const preferredTop=team?(rect.bottom+tooltipHeight<window.innerHeight-12?rect.bottom+8:rect.top-tooltipHeight-8):(pointerY>window.innerHeight-tooltipHeight-24?pointerY-tooltipHeight-14:pointerY+14);
+    const tooltipWidth=team?Math.min(384,window.innerWidth-24):224,tooltipHeight=team?Math.min(360,window.innerHeight-24):76;
+    const rightSide=rect.right+12,leftSide=rect.left-tooltipWidth-12;
+    const teamLeft=rightSide+tooltipWidth<=window.innerWidth-12?rightSide:leftSide>=12?leftSide:rect.left;
+    const left=team?Math.max(12,Math.min(teamLeft,window.innerWidth-tooltipWidth-12)):Math.max(12,Math.min(pointerX+14,window.innerWidth-tooltipWidth-12));
+    const preferredTop=team?rect.top:(pointerY>window.innerHeight-tooltipHeight-24?pointerY-tooltipHeight-14:pointerY+14);
     const top=Math.max(12,Math.min(preferredTop,window.innerHeight-tooltipHeight-12));
     setTooltip({title,detail,team,left,top});
   };
