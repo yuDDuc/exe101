@@ -2,9 +2,13 @@
 
 [Bản đồ project & tìm nhanh tệp](docs/PROJECT-GRAPH.md) · [Sơ đồ tệp tương tác](docs/PROJECT-GRAPH.html)
 
-Prototype kết nối Startup với Nhà đầu tư, xây bằng React, Tailwind và Node.js. Logo **X**, giao diện tối.
+Mã nguồn ứng dụng 2GOOD2BETRUE kết nối Startup với Nhà đầu tư, xây bằng React, Tailwind và Node.js. Giao diện có chế độ sáng và tối.
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2Fthongle2003%2FX-Workspace)
+**GitHub lưu mã nguồn, không tự chạy website hoặc API.** Nhánh `main` của repo này chứa bản đang phát triển. Để xem trên máy, chạy theo hướng dẫn bên dưới. Để có URL công khai chạy được cả API, cần triển khai Web Service từ **repo này** theo [hướng dẫn Render](docs/HOST-RENDER.md). Bản Cloudflare ở dưới là một deployment riêng và không tự cập nhật khi push GitHub.
+
+App hiện có hai luồng: URL mặc định chạy với API máy chủ; `?mode=demo` là bản thử lưu một phần dữ liệu trong trình duyệt. Phần case trên máy chủ mới cho tạo nháp và gửi vào trạng thái **chờ cấu hình phí**; chưa thu tiền, giao mentor hoặc công bố case cho Investor. Xem [trạng thái luồng case](docs/WORKFLOW-CASE-PRODUCTION.md).
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2FyuDDuc%2Fexe101)
 
 ## Bản dự phòng Cloudflare Free
 

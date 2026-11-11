@@ -5,7 +5,7 @@ Dịch vụ: [Render](https://render.com). Cấu hình trong `render.yaml` chọ
 ## Deploy từ GitHub
 
 1. Đăng nhập [Render](https://dashboard.render.com/) bằng GitHub.
-2. Mở [Deploy to Render](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2Fthongle2003%2FX-Workspace) và cấp quyền truy cập repo `thongle2003/X-Workspace`.
+2. Mở [Deploy to Render](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2FyuDDuc%2Fexe101) và cấp quyền truy cập repo `yuDDuc/exe101`.
 3. Render đọc `render.yaml`. Kiểm tra service đang chọn **Free**, region Singapore.
 4. Nhập biến bí mật **AI_API_KEY** bằng khóa ModelAPI của bạn. Không ghi khóa vào GitHub và không gửi khóa trong chat.
 5. Chọn **Deploy Blueprint** và chờ build xong. Render cấp URL `https://...onrender.com`.
@@ -17,7 +17,7 @@ API key giữ phía máy chủ. `AI_CREDENTIALS_FILE` trên máy cá nhân khôn
 
 | Mục | Giá trị |
 |---|---|
-| Repository | `https://github.com/thongle2003/X-Workspace` |
+| Repository | `https://github.com/yuDDuc/exe101` |
 | Language | Node |
 | Root Directory | `web` |
 | Build Command | `npm ci --include=dev && npm run build` |

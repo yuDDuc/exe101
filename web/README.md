@@ -1,6 +1,6 @@
-# 2G2BT / X — React + Tailwind prototype
+# 2G2BT — React + Tailwind + Node.js
 
-Bản prototype cho hai tài khoản mẫu và quản lý 6 startup: [Hướng dẫn dùng demo](README-DEMO.md), mở http://localhost:5180/?mode=demo#/home.
+Bản thử giao diện và nghiệp vụ cho Startup/Investor. [Hướng dẫn dùng demo](README-DEMO.md) mở `http://localhost:5180/?mode=demo#/home`; bản dùng API máy chủ mở `http://localhost:5180/`. Hai URL có dữ liệu và mức hoàn thiện khác nhau. Case mới trên máy chủ nằm ở `#/cases`, hiện dừng tại trạng thái chờ cấu hình phí và không xuất hiện cho Investor.
 
 ## Chạy ứng dụng
 
