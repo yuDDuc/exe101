@@ -3,7 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { ROLE_PLANS, weekKey, parseCSV, analyze } from '../domain.js';
 import { DEEP_DILIGENCE_KEYS } from '../diligence.js';
-import { createDemoMarketplace } from './demo-marketplace.mjs';
+import { createMarketplaceStartups, LEGACY_MARKETPLACE_IDS } from './marketplace-startups.mjs';
 
 export const DEMO_USERS = Object.freeze({
   founder: Object.freeze({ id: 'founder', role: 'founder', name: 'Startup' }),
@@ -173,7 +173,7 @@ function validatedState(value) {
     const historicalAccess=(userId,workspaceId)=>project(workspaceId).ownerId===userId||state.requests.some(request=>request.workspaceId===workspaceId&&request.investorId===userId&&['approved','revoked'].includes(request.status));
     const optionalWorkspace=(workspaceId,userId)=>{if(workspaceId!==null){if(typeof workspaceId!=='string'||!historicalAccess(userId,workspaceId))throw backupInvalid();}};
     for(const w of state.workspaces) {
-      keys(w,['id','ownerId','name','goal','profile','published','publishedAt','financial','diligence','createdAt','updatedAt','isDemo']);actorId(w.ownerId,'founder');text(w.name,'Tên workspace',1,90);text(w.goal,'Mục tiêu',1,500);if(w.isDemo!==undefined&&typeof w.isDemo!=='boolean')throw backupInvalid();
+      keys(w,['id','ownerId','name','goal','profile','published','publishedAt','financial','diligence','createdAt','updatedAt','catalogListing']);actorId(w.ownerId,'founder');text(w.name,'Tên workspace',1,90);text(w.goal,'Mục tiêu',1,500);if(w.catalogListing!==undefined&&typeof w.catalogListing!=='boolean')throw backupInvalid();
       keys(w.profile,['name','industry','stage','location','summary','target','fundingRoundIndex','fundingRoundTotal','raised','traction','customerReferences','market','team','teamRoster','useOfFunds']);w.profile=normalizeProfile(w.profile);
       if(w.diligence===undefined)w.diligence={};
       keys(w.diligence,[...DEEP_DILIGENCE_KEYS]);
@@ -262,29 +262,39 @@ function validatedState(value) {
 }
 
 /** Synchronous persistence also supports a Durable Object SQLite callback. */
-export function createWorkflowStore({ filePath, now = () => new Date(), initialData, onPersist, seedDemoMarketplace = false } = {}) {
+export function createWorkflowStore({ filePath, now = () => new Date(), initialData, onPersist, seedMarketplace = false } = {}) {
   if(onPersist!==undefined&&(typeof onPersist!=='function'||onPersist.constructor?.name==='AsyncFunction'))throw new TypeError('onPersist must be a synchronous function.');
   if(filePath&&onPersist)throw new TypeError('Choose file persistence or onPersist, not both.');
   let loaded=initialData;
   if(loaded===undefined&&filePath&&fs.existsSync(filePath)){const bytes=fs.readFileSync(filePath,'utf8');try{loaded=JSON.parse(bytes);}catch{throw backupInvalid();}}
-  let seededDemoMarketplace=false;
-  if(seedDemoMarketplace){
-    const stamp=new Date(now()).toISOString(), examples=createDemoMarketplace(stamp);
-    if(loaded===undefined){loaded={...freshData(),workspaces:examples};seededDemoMarketplace=true;}
+  let catalogChanged=false;
+  if(loaded&&typeof loaded==='object'&&Array.isArray(loaded.workspaces)){
+    loaded=structuredClone(loaded);
+    const replaceId=id=>LEGACY_MARKETPLACE_IDS[id]||id;
+    for(const workspace of loaded.workspaces){
+      const nextId=replaceId(workspace?.id);
+      if(nextId!==workspace?.id){workspace.id=nextId;workspace.catalogListing=true;catalogChanged=true;}
+      if(workspace&&Object.hasOwn(workspace,'isDemo')){workspace.catalogListing=Boolean(workspace.isDemo);delete workspace.isDemo;catalogChanged=true;}
+    }
+    for(const account of Object.values(loaded.accounts||{}))for(const key of ['watchlist','compare'])if(Array.isArray(account[key]))account[key]=account[key].map(replaceId);
+    for(const name of ['cases','requests','messages','portfolio','reports','aiChats','reservations'])if(Array.isArray(loaded[name]))for(const row of loaded[name])if(typeof row?.workspaceId==='string')row.workspaceId=replaceId(row.workspaceId);
+  }
+  if(seedMarketplace){
+    const stamp=new Date(now()).toISOString(), examples=createMarketplaceStartups(stamp);
+    if(loaded===undefined){loaded={...freshData(),workspaces:examples};catalogChanged=true;}
     else if(Array.isArray(loaded.workspaces)){
       const byId=new Map(examples.map(workspace=>[workspace.id,workspace]));
       const existing=new Set(loaded.workspaces.map(workspace=>workspace?.id));
-      let changed=false;
       const workspaces=loaded.workspaces.map(current=>{
         const example=byId.get(current?.id);
         if(!example)return current;
         const next={...current,...example,financial:current.financial,diligence:current.diligence,createdAt:current.createdAt,publishedAt:current.publishedAt||example.publishedAt,updatedAt:current.updatedAt};
-        if(!sameValue(next,current)){next.updatedAt=stamp;changed=true;}
+        if(!sameValue(next,current)){next.updatedAt=stamp;catalogChanged=true;}
         return next;
       });
       const missing=examples.filter(workspace=>!existing.has(workspace.id));
-      if(missing.length){workspaces.push(...missing);changed=true;}
-      if(changed){loaded={...structuredClone(loaded),workspaces};seededDemoMarketplace=true;}
+      if(missing.length){workspaces.push(...missing);catalogChanged=true;}
+      if(catalogChanged)loaded={...loaded,workspaces};
     }
   }
   let data=validatedState(loaded===undefined?freshData():loaded);
@@ -320,7 +330,7 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
     }
     data = next;
   }
-  if(seededDemoMarketplace)persist(data);
+  if(catalogChanged)persist(data);
   function exportData() { return structuredClone(data); }
   function restoreData(backup, { expectedRevision } = {}) {
     integer(expectedRevision,'Revision mong đợi');
@@ -351,7 +361,7 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
     if (used >= limit) throw error(409, 'LIMIT', `Đã sử dụng ${used}/${limit} hạn mức.`, { feature, quota: { used, limit, remaining: Math.max(0,limit-used) } });
   }
   function publicProject(project) {
-    return { id: project.id, workspaceId: project.id, ownerId: project.ownerId, ownerName: user(project.ownerId).name, profile: structuredClone(project.profile), publishedAt: project.publishedAt, isDemo:Boolean(project.isDemo) };
+    return { id: project.id, workspaceId: project.id, ownerId: project.ownerId, ownerName: user(project.ownerId).name, profile: structuredClone(project.profile), publishedAt: project.publishedAt };
   }
   function snapshot(userId) {
     const actor = user(userId);
@@ -387,7 +397,7 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
       }
       case 'create-workspace': {
         if (user(userId).role !== 'founder') throw error(403, 'FORBIDDEN', 'Chỉ Startup được tạo workspace.');
-        requireRoom(next.workspaces.filter(w => w.ownerId === userId && !w.isDemo).length, currentPlan.workspaces, 'workspaces');
+        requireRoom(next.workspaces.filter(w => w.ownerId === userId && !w.catalogListing).length, currentPlan.workspaces, 'workspaces');
         const name = text(action.name, 'Tên workspace', 1, 90), goal = text(action.goal, 'Mục tiêu', 1, 500);
         const profile = action.profile ? normalizeProfile(action.profile) : { name, industry:'Chưa công bố', stage:'Pre-seed', location:'Việt Nam', summary:goal.padEnd(10,'.'), target:1 };
         next.workspaces.push({ id:id('workspace'), ownerId:userId, name, goal, profile, published:false, publishedAt:null, financial:null, diligence:{}, createdAt:stamp, updatedAt:stamp });
