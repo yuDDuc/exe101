@@ -24,13 +24,33 @@ const details = {
   'demo-bep-gan': { fundingRoundIndex:2, fundingRoundTotal:4, raised:520, traction:'Dữ liệu demo (giả lập, chưa xác minh): 30 nhà hàng và 20 nhà cung cấp trong kịch bản mẫu; chưa có đơn hàng thật.', team:'Nhóm sáng lập mô phỏng: vận hành nhà hàng, thương mại điện tử và chuỗi cung ứng thực phẩm. Không đại diện người thật.', useOfFunds:'Sản phẩm đặt hàng định kỳ (35%)\nPhát triển nhà cung cấp (25%)\nKiểm soát chất lượng (20%)\nHỗ trợ và vận hành (20%)' },
 };
 
+const teamRoles = {
+  'demo-tai-sinh-nong':['CEO · chuỗi cung ứng nông nghiệp','CTO · vật liệu sinh học','Vận hành · thu gom và sơ chế'],
+  'demo-so-may':['CEO · sản phẩm SaaS','CTO · nền tảng dữ liệu','Chuyên môn · kế toán doanh nghiệp nhỏ'],
+  'demo-bac-si-so':['CEO · vận hành phòng khám','CTO · phần mềm y tế','Chuyên môn · bảo mật dữ liệu'],
+  'demo-cho-nong':['CEO · phát triển thị trường nông sản','CTO · thương mại điện tử','Vận hành · logistics lạnh'],
+  'demo-hoc-5-phut':['CEO · thiết kế học tập','CTO · nền tảng Edtech','Chuyên môn · đo lường kết quả học'],
+  'demo-dien-sach':['CEO · hiệu quả năng lượng','CTO · IoT công nghiệp','Vận hành · triển khai nhà xưởng'],
+  'demo-vi-mo':['CEO · sản phẩm Fintech','CTO · tích hợp thanh toán','Chuyên môn · quản trị rủi ro'],
+  'demo-kho-noi':['CEO · logistics','CTO · phần mềm kho vận','Vận hành · kết nối kho'],
+  'demo-vat-lieu-moi':['CEO · kinh tế tuần hoàn','CTO · kỹ thuật vật liệu','Vận hành · tái sử dụng công trình'],
+  'demo-bep-gan':['CEO · vận hành nhà hàng','CTO · thương mại điện tử','Vận hành · chuỗi cung ứng thực phẩm'],
+};
+
+function demoTeam(id) {
+  const number=String(examples.findIndex(item=>item.id===id)+1).padStart(2,'0');
+  const roles=teamRoles[id];
+  const person=(suffix,title)=>({name:`Nhân vật AI mô phỏng ${number}-${suffix}`,title,bio:'Nhân vật hư cấu do AI tạo cho hồ sơ minh họa; không đại diện cá nhân thật.'});
+  return {leader:person('A',roles[0]),coLeader:person('B',roles[1]),members:[person('C',roles[2])]};
+}
+
 export function createDemoMarketplace(stamp) {
   return examples.map(({ id, name, industry, stage, location, target, goal, summary, market }) => ({
     id,
     ownerId:'founder',
     name,
     goal,
-    profile:{ name, industry, stage, location, summary, target, ...details[id], customerReferences:'', market, teamRoster:{ leader:null, coLeader:null, members:[] } },
+    profile:{ name, industry, stage, location, summary, target, ...details[id], customerReferences:'', market, teamRoster:demoTeam(id) },
     published:true,
     publishedAt:stamp,
     financial:null,
