@@ -3,6 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { ROLE_PLANS, weekKey, parseCSV, analyze } from '../domain.js';
 import { DEEP_DILIGENCE_KEYS } from '../diligence.js';
+import { createDemoMarketplace } from './demo-marketplace.mjs';
 
 export const DEMO_USERS = Object.freeze({
   founder: Object.freeze({ id: 'founder', role: 'founder', name: 'Startup' }),
@@ -172,7 +173,7 @@ function validatedState(value) {
     const historicalAccess=(userId,workspaceId)=>project(workspaceId).ownerId===userId||state.requests.some(request=>request.workspaceId===workspaceId&&request.investorId===userId&&['approved','revoked'].includes(request.status));
     const optionalWorkspace=(workspaceId,userId)=>{if(workspaceId!==null){if(typeof workspaceId!=='string'||!historicalAccess(userId,workspaceId))throw backupInvalid();}};
     for(const w of state.workspaces) {
-      keys(w,['id','ownerId','name','goal','profile','published','publishedAt','financial','diligence','createdAt','updatedAt']);actorId(w.ownerId,'founder');text(w.name,'Tên workspace',1,90);text(w.goal,'Mục tiêu',1,500);
+      keys(w,['id','ownerId','name','goal','profile','published','publishedAt','financial','diligence','createdAt','updatedAt','isDemo']);actorId(w.ownerId,'founder');text(w.name,'Tên workspace',1,90);text(w.goal,'Mục tiêu',1,500);if(w.isDemo!==undefined&&typeof w.isDemo!=='boolean')throw backupInvalid();
       keys(w.profile,['name','industry','stage','location','summary','target','fundingRoundIndex','fundingRoundTotal','raised','traction','customerReferences','market','team','teamRoster','useOfFunds']);w.profile=normalizeProfile(w.profile);
       if(w.diligence===undefined)w.diligence={};
       keys(w.diligence,[...DEEP_DILIGENCE_KEYS]);
@@ -261,11 +262,21 @@ function validatedState(value) {
 }
 
 /** Synchronous persistence also supports a Durable Object SQLite callback. */
-export function createWorkflowStore({ filePath, now = () => new Date(), initialData, onPersist } = {}) {
+export function createWorkflowStore({ filePath, now = () => new Date(), initialData, onPersist, seedDemoMarketplace = false } = {}) {
   if(onPersist!==undefined&&(typeof onPersist!=='function'||onPersist.constructor?.name==='AsyncFunction'))throw new TypeError('onPersist must be a synchronous function.');
   if(filePath&&onPersist)throw new TypeError('Choose file persistence or onPersist, not both.');
   let loaded=initialData;
   if(loaded===undefined&&filePath&&fs.existsSync(filePath)){const bytes=fs.readFileSync(filePath,'utf8');try{loaded=JSON.parse(bytes);}catch{throw backupInvalid();}}
+  let seededDemoMarketplace=false;
+  if(seedDemoMarketplace){
+    const examples=createDemoMarketplace(new Date(now()).toISOString());
+    if(loaded===undefined){loaded={...freshData(),workspaces:examples};seededDemoMarketplace=true;}
+    else if(Array.isArray(loaded.workspaces)){
+      const existing=new Set(loaded.workspaces.map(workspace=>workspace?.id));
+      const missing=examples.filter(workspace=>!existing.has(workspace.id));
+      if(missing.length){loaded={...structuredClone(loaded),workspaces:[...loaded.workspaces,...missing]};seededDemoMarketplace=true;}
+    }
+  }
   let data=validatedState(loaded===undefined?freshData():loaded);
   function user(userId) {
     if (!Object.hasOwn(DEMO_USERS, userId)) throw error(401, 'SESSION', 'Chọn vai trò để tiếp tục.');
@@ -299,6 +310,7 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
     }
     data = next;
   }
+  if(seededDemoMarketplace)persist(data);
   function exportData() { return structuredClone(data); }
   function restoreData(backup, { expectedRevision } = {}) {
     integer(expectedRevision,'Revision mong đợi');
@@ -329,7 +341,7 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
     if (used >= limit) throw error(409, 'LIMIT', `Đã sử dụng ${used}/${limit} hạn mức.`, { feature, quota: { used, limit, remaining: Math.max(0,limit-used) } });
   }
   function publicProject(project) {
-    return { id: project.id, workspaceId: project.id, ownerId: project.ownerId, ownerName: user(project.ownerId).name, profile: structuredClone(project.profile), publishedAt: project.publishedAt };
+    return { id: project.id, workspaceId: project.id, ownerId: project.ownerId, ownerName: user(project.ownerId).name, profile: structuredClone(project.profile), publishedAt: project.publishedAt, isDemo:Boolean(project.isDemo) };
   }
   function snapshot(userId) {
     const actor = user(userId);
@@ -365,7 +377,7 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
       }
       case 'create-workspace': {
         if (user(userId).role !== 'founder') throw error(403, 'FORBIDDEN', 'Chỉ Startup được tạo workspace.');
-        requireRoom(next.workspaces.filter(w => w.ownerId === userId).length, currentPlan.workspaces, 'workspaces');
+        requireRoom(next.workspaces.filter(w => w.ownerId === userId && !w.isDemo).length, currentPlan.workspaces, 'workspaces');
         const name = text(action.name, 'Tên workspace', 1, 90), goal = text(action.goal, 'Mục tiêu', 1, 500);
         const profile = action.profile ? normalizeProfile(action.profile) : { name, industry:'Chưa công bố', stage:'Pre-seed', location:'Việt Nam', summary:goal.padEnd(10,'.'), target:1 };
         next.workspaces.push({ id:id('workspace'), ownerId:userId, name, goal, profile, published:false, publishedAt:null, financial:null, diligence:{}, createdAt:stamp, updatedAt:stamp });
