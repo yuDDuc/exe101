@@ -61,6 +61,7 @@ export function createAPI({store=createWorkflowStore({filePath:process.env.WORKF
       if(req.method==='GET'&&url.pathname==='/api/workflow')return send(res,200,store.snapshot(userId));
       if(req.method==='POST'&&url.pathname==='/api/workflow/actions'){
         const action=await json(req);
+        if(action.type==='bypass-connection-fee-demo'&&!publicDemo)throw fail(403,'DEMO_ONLY','Bỏ qua phí chỉ bật trong môi trường demo công khai.');
         if(publicDemo&&action.type==='change-plan')throw fail(403,'PUBLIC_DEMO_PLAN','Gói hiện tại được giữ cố định để giới hạn chi phí AI. Bạn vẫn có thể xem bảng giá và trải nghiệm các tính năng trong hạn mức.');
         return send(res,200,store.act(userId,action));
       }

@@ -192,7 +192,7 @@ function validatedState(value) {
     }
     const activeRequests=new Set(),paymentIds=new Set(),requestCounts={};
     for(const r of state.requests) {
-      keys(r,['id','workspaceId','investorId','message','status','payments','createdAt','updatedAt']);project(r.workspaceId);actorId(r.investorId,'investor');text(r.message,'Lời nhắn',10,1000);timestamp(r.createdAt);timestamp(r.updatedAt);
+      keys(r,['id','workspaceId','investorId','message','status','payments','demoAccess','createdAt','updatedAt']);project(r.workspaceId);actorId(r.investorId,'investor');text(r.message,'Lời nhắn',10,1000);timestamp(r.createdAt);timestamp(r.updatedAt);if(r.demoAccess!==undefined&&(typeof r.demoAccess!=='boolean'||r.demoAccess&&r.status!=='approved'))throw backupInvalid();
       if(!['pending','approved','rejected','revoked'].includes(r.status))throw backupInvalid();
       if(r.payments!==undefined){
         keys(r.payments,['startup','investor']);
@@ -344,11 +344,11 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
     return found;
   }
   function canRead(state, userId, project) {
-    return project.ownerId === userId || state.requests.some(request => request.workspaceId === project.id && request.investorId === userId && request.status === 'approved' && request.payments?.startup && request.payments?.investor);
+    return project.ownerId === userId || state.requests.some(request => request.workspaceId === project.id && request.investorId === userId && request.status === 'approved' && (request.demoAccess===true||request.payments?.startup&&request.payments?.investor));
   }
   function readable(state, userId, workspaceId) {
     const project = workspace(state, workspaceId);
-    if (!canRead(state, userId, project)) throw error(403, 'FORBIDDEN', 'Hồ sơ riêng chỉ mở sau khi Startup đồng ý và hai khoản phí kết nối được máy chủ xác nhận.');
+    if (!canRead(state, userId, project)) throw error(403, 'FORBIDDEN', 'Hồ sơ riêng chỉ mở sau khi Startup đồng ý và hai khoản phí được xác nhận, hoặc được bỏ qua trong chế độ demo.');
     return project;
   }
   function owned(state, userId, workspaceId) {
@@ -473,7 +473,14 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
         if(!['approved','rejected','revoked'].includes(action.decision)) throw error(400,'INVALID','Quyết định không hợp lệ.');
         if(action.decision==='revoked' && request.status!=='approved') throw error(409,'CONFLICT','Chỉ thu hồi yêu cầu đang được duyệt.');
         if(action.decision!=='revoked' && request.status!=='pending') throw error(409,'CONFLICT','Yêu cầu đã được xử lý.');
-        request.status=action.decision;if(action.decision==='approved')request.payments={startup:null,investor:null};request.updatedAt=stamp;
+        request.status=action.decision;if(action.decision==='approved'){request.payments={startup:null,investor:null};request.demoAccess=false;}request.updatedAt=stamp;
+        break;
+      }
+      case 'bypass-connection-fee-demo': {
+        const request=next.requests.find(r=>r.id===action.requestId);
+        if(!request)throw error(404,'NOT_FOUND','Không tìm thấy yêu cầu.');
+        if(request.status!=='approved'||request.investorId!==userId&&workspace(next,request.workspaceId).ownerId!==userId)throw error(403,'FORBIDDEN','Chỉ hai bên trong yêu cầu đã được duyệt mới có thể mở quyền demo.');
+        request.demoAccess=true;request.updatedAt=stamp;
         break;
       }
       case 'upload-financial': {
