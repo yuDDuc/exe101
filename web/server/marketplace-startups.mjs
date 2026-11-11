@@ -1,6 +1,6 @@
 const startups = [
   { id:'startup-tai-sinh-nong', name:'Tái Sinh Nông', industry:'Climate Tech', stage:'Pre-seed', location:'Cần Thơ', target:1800, goal:'Mở rộng thu gom phụ phẩm nông nghiệp và sản xuất vật liệu đóng gói sinh học.', summary:'Nền tảng kết nối hợp tác xã với đơn vị tái chế phụ phẩm nông nghiệp thành vật liệu đóng gói sinh học, hướng tới chuỗi cung ứng tuần hoàn.', market:'Khách hàng mục tiêu: hợp tác xã lúa gạo, nhà sản xuất bao bì và doanh nghiệp thực phẩm tại Đồng bằng sông Cửu Long.' },
-  { id:'startup-so-may', name:'Sổ Mây', industry:'SaaS', stage:'Seed', location:'TP. Hồ Chí Minh', target:3200, goal:'Mở rộng công cụ quản trị dòng tiền cho doanh nghiệp nhỏ.', summary:'Phần mềm giúp cửa hàng và doanh nghiệp nhỏ theo dõi thu chi, hóa đơn và dự báo dòng tiền trên một giao diện.', market:'Khách hàng mục tiêu: doanh nghiệp nhỏ, cửa hàng bán lẻ và đơn vị cung cấp dịch vụ.' },
+  { id:'startup-so-may', name:'Sổ Mây', industry:'SaaS · Fintech', stage:'Seed', location:'TP. Hồ Chí Minh', target:3200, goal:'Mở rộng nền tảng quản trị tài chính và dòng tiền cho doanh nghiệp nhỏ tại Việt Nam.', summary:'Nền tảng SaaS giúp doanh nghiệp nhỏ hợp nhất thu chi từ cửa hàng, hóa đơn và tài khoản ngân hàng; tự động đối soát, theo dõi công nợ, lập báo cáo quản trị và dự báo dòng tiền. Sản phẩm hướng tới chủ doanh nghiệp và kế toán cần số liệu cập nhật mà không phải ghép nhiều bảng tính.', market:'Khách hàng mục tiêu: doanh nghiệp siêu nhỏ và nhỏ, cửa hàng bán lẻ, đơn vị dịch vụ và công ty thương mại. Người dùng chính là chủ doanh nghiệp, kế toán nội bộ và kế toán dịch vụ. Nhu cầu: chốt sổ nhanh, kiểm soát công nợ, biết số dư có thể sử dụng và dự báo thiếu hụt tiền. Kênh tiếp cận dự kiến: kế toán dịch vụ, đối tác phần mềm hóa đơn, ngân hàng và bán hàng trực tiếp. Cần xác minh quy mô phân khúc bằng nguồn dữ liệu có thể kiểm tra.' },
   { id:'startup-bac-si-so', name:'Bác Sĩ Số', industry:'Healthtech', stage:'Pre-seed', location:'Hà Nội', target:2400, goal:'Hoàn thiện nền tảng quản lý lịch hẹn và chăm sóc sau khám cho phòng khám.', summary:'Giải pháp quản lý lịch hẹn, nhắc tái khám và hồ sơ chăm sóc cơ bản cho phòng khám độc lập.', market:'Khách hàng mục tiêu: phòng khám đa khoa, chuyên khoa và trung tâm chăm sóc sức khỏe.' },
   { id:'startup-cho-nong', name:'Chợ Nông', industry:'E-commerce', stage:'Seed', location:'Đà Lạt', target:2800, goal:'Mở rộng kênh đặt hàng trực tiếp giữa nông hộ và bếp ăn tập thể.', summary:'Sàn đặt hàng nông sản theo mùa, giúp bếp ăn lập kế hoạch mua hàng và nông hộ nhận nhu cầu trước vụ thu hoạch.', market:'Khách hàng mục tiêu: nhà hàng, bếp ăn tập thể, hợp tác xã và trang trại.' },
   { id:'startup-hoc-5-phut', name:'Học 5 Phút', industry:'Edtech', stage:'Pre-seed', location:'Đà Nẵng', target:1500, goal:'Phát triển thư viện bài học ngắn về kỹ năng nghề nghiệp số.', summary:'Ứng dụng học theo bài ngắn với lộ trình thực hành kỹ năng số dành cho người đi làm.', market:'Khách hàng mục tiêu: người đi làm, sinh viên năm cuối và doanh nghiệp đào tạo nội bộ.' },
@@ -13,7 +13,7 @@ const startups = [
 
 const details = {
   'startup-tai-sinh-nong': { fundingRoundIndex:1, fundingRoundTotal:4, raised:420, traction:'Đã khảo sát 12 hợp tác xã và hoàn thành 3 lô thử nghiệm vật liệu; doanh thu thương mại chưa được công bố.', customerReferences:'HTX Đồng Xanh\nBao Bì Mekong', team:'Đội ngũ kết hợp kinh nghiệm về chuỗi cung ứng nông nghiệp, vật liệu sinh học và vận hành sản phẩm.', useOfFunds:'Thử nghiệm vật liệu sinh học (40%)\nThiết bị thu gom và sơ chế (30%)\nPhát triển sản phẩm (20%)\nPháp lý và vận hành (10%)' },
-  'startup-so-may': { fundingRoundIndex:2, fundingRoundTotal:4, raised:900, traction:'Chuẩn bị chương trình thử nghiệm với 80 cửa hàng bán lẻ; tập trung vào đối soát và dự báo dòng tiền.', customerReferences:'An Phúc Retail\nMinh Tâm Mart', team:'Đội ngũ có kinh nghiệm về sản phẩm SaaS, kế toán doanh nghiệp nhỏ và bảo mật dữ liệu.', useOfFunds:'Phát triển sản phẩm và bảo mật (40%)\nTích hợp hóa đơn, ngân hàng (25%)\nBán hàng và hỗ trợ khách hàng (25%)\nPháp lý, vận hành (10%)' },
+  'startup-so-may': { fundingRoundIndex:2, fundingRoundTotal:4, raised:900, traction:'Kế hoạch thử nghiệm: tuyển nhóm tối đa 80 cửa hàng để kiểm tra quy trình nhập dữ liệu, đối soát, công nợ và dự báo tiền mặt. Chưa có số liệu người dùng hoạt động, khách hàng trả phí, doanh thu định kỳ hoặc tỷ lệ duy trì được xác minh trong hồ sơ này.', customerReferences:'Chưa công bố hợp đồng hoặc khách hàng trả phí. Nhóm thử nghiệm 80 cửa hàng là mục tiêu kế hoạch, không phải số lượng người dùng đã xác nhận.', team:'Đội ngũ định hướng sản phẩm SaaS, tích hợp dữ liệu kế toán và ngân hàng, bảo mật thông tin tài chính, hỗ trợ triển khai cho doanh nghiệp nhỏ. Hồ sơ kinh nghiệm và phân công toàn thời gian cần được bổ sung để thẩm định.', useOfFunds:'Phát triển sản phẩm, bảo mật và hạ tầng (40%)\nTích hợp hóa đơn điện tử, ngân hàng và nền tảng bán hàng (25%)\nBán hàng, triển khai và hỗ trợ khách hàng (25%)\nPháp lý, tuân thủ và vận hành (10%)' },
   'startup-bac-si-so': { fundingRoundIndex:1, fundingRoundTotal:4, raised:300, traction:'Quy trình triển khai tại 5 phòng khám, với năng lực mục tiêu 2.000 lịch hẹn mỗi tháng.', customerReferences:'Phòng khám An Khang\nPhòng khám Hồng Mai', team:'Đội ngũ chuyên môn về vận hành phòng khám, phát triển phần mềm y tế và bảo vệ dữ liệu.', useOfFunds:'Hoàn thiện sản phẩm và an toàn dữ liệu (40%)\nThử nghiệm quy trình (25%)\nTích hợp hệ thống (20%)\nVận hành và pháp lý (15%)' },
   'startup-cho-nong': { fundingRoundIndex:2, fundingRoundTotal:4, raised:700, traction:'Kết nối 25 nhà cung cấp nông sản với 40 bếp ăn; tập trung vào đơn hàng theo mùa và logistics lạnh.', customerReferences:'Bếp Nhà Mộc\nNông Trại Đồi Xanh', team:'Đội ngũ có kinh nghiệm về thu mua nông sản, logistics lạnh và thương mại điện tử.', useOfFunds:'Sản phẩm và công cụ đặt hàng (35%)\nKiểm soát chất lượng (25%)\nLogistics và chuỗi lạnh (25%)\nPhát triển thị trường (15%)' },
   'startup-hoc-5-phut': { fundingRoundIndex:1, fundingRoundTotal:4, raised:150, traction:'Hoàn thiện 40 bài học chuyên môn và lộ trình học 6 tuần dành cho kỹ năng số.', customerReferences:'Cao đẳng Sao Việt\nTrung tâm Hướng Dương', team:'Đội ngũ chuyên môn về thiết kế học liệu, công nghệ giáo dục và đo lường kết quả học tập.', useOfFunds:'Sản xuất học liệu (35%)\nPhát triển nền tảng (30%)\nHợp tác chuyên gia (20%)\nVận hành và kiểm định nội dung (15%)' },
@@ -37,6 +37,45 @@ const teams = {
   'startup-bep-gan': [['Lê Hoàng Yến','CEO · Vận hành nhà hàng'],['Nguyễn Mạnh Hùng','CTO · Thương mại điện tử'],['Võ Thu Trang','COO · Chuỗi cung ứng']],
 };
 
+const soMayFinancialCsv = `period,revenue,cogs,opex,cash,operating_cash_flow,receivables
+2025-11,120,12,240,1080,-132,18
+2025-12,135,13.5,245,950,-130,21
+2026-01,150,15,250,835,-115,24
+2026-02,165,16.5,255,735,-100,27
+2026-03,180,18,260,655,-80,30
+2026-04,195,19.5,265,590,-65,34
+2026-05,210,21,270,540,-50,38
+2026-06,225,22.5,275,505,-35,43
+2026-07,240,24,280,485,-20,48
+2026-08,255,25.5,285,475,-10,54
+2026-09,270,27,290,470,-5,61
+2026-10,285,28.5,295,465,-5,68`;
+
+// Private founder workspace notes. Unknowns are called out so the assistant
+// can analyze gaps instead of treating planning assumptions as verified facts.
+export const SO_MAY_DILIGENCE = Object.freeze({
+  productDemo:'Phạm vi sản phẩm: nhập hoặc đồng bộ giao dịch; phân loại thu chi; đối soát hóa đơn và giao dịch; theo dõi công nợ phải thu/phải trả; bảng điều khiển dòng tiền; dự báo số dư 4–13 tuần. Cần bổ sung đường dẫn bản chạy, ảnh sản phẩm, tình trạng từng tính năng và kết quả kiểm thử.',
+  productRoadmap:'0–3 tháng: hoàn thiện nhập dữ liệu, phân quyền, nhật ký thay đổi và báo cáo dòng tiền. 3–6 tháng: tích hợp hóa đơn điện tử và một số ngân hàng theo khả năng đối tác. 6–12 tháng: dự báo, cảnh báo công nợ và báo cáo đa cửa hàng. Đây là lộ trình dự kiến; cần cập nhật mốc đã hoàn thành, nguồn lực và tiêu chí nghiệm thu.',
+  marketSizing:'Phân khúc ưu tiên ban đầu: doanh nghiệp nhỏ/cửa hàng có kế toán nội bộ hoặc thuê ngoài và đang ghép dữ liệu từ nhiều nguồn. Chưa có số liệu TAM/SAM/SOM được dẫn nguồn. Khi phân tích, dùng công thức số doanh nghiệp phù hợp × tỷ lệ có nhu cầu × doanh thu thuê bao năm; tách rõ nguồn thống kê, địa bàn và giả định chuyển đổi.',
+  competitorMatrix:'Nhóm thay thế: bảng tính tự lập; phần mềm kế toán; phần mềm bán hàng/POS; dịch vụ kế toán thuê ngoài; công cụ quản trị dòng tiền quốc tế. Cần so sánh theo đồng bộ dữ liệu, đối soát, công nợ, dự báo, đa cửa hàng, giá, thời gian triển khai và khả năng xuất dữ liệu. Chưa có kiểm chứng lợi thế cạnh tranh hoặc bảng so sánh sản phẩm cụ thể.',
+  goToMarket:'Kênh dự kiến: bán trực tiếp cho chủ doanh nghiệp; giới thiệu qua kế toán dịch vụ; hợp tác với nhà cung cấp hóa đơn điện tử, POS và ngân hàng; nội dung hướng dẫn quản trị dòng tiền. Thử nghiệm đề xuất: phỏng vấn 20 doanh nghiệp, mời nhóm thử nghiệm tối đa 80 cửa hàng, đo kích hoạt, dùng hàng tuần, chuyển đổi trả phí và thời gian hỗ trợ. Đây là kế hoạch, chưa phải kết quả đạt được.',
+  pricingModel:'Giả thuyết giá để kiểm tra: gói cơ bản 199.000 đ/tháng cho một đơn vị; gói tăng trưởng 499.000 đ/tháng cho nhiều nguồn dữ liệu và nhiều người dùng; gói tùy chỉnh báo giá. Chưa có khảo sát sẵn lòng chi trả hay doanh thu thuê bao xác nhận. Cần thử nghiệm giá theo quy mô giao dịch, số điểm bán và mức hỗ trợ.',
+  customerContracts:'Chưa cung cấp hợp đồng, hóa đơn bán hàng, số khách hàng trả phí hoặc mức tập trung doanh thu. Mục tiêu thử nghiệm 80 cửa hàng không đồng nghĩa với khách hàng đang hoạt động. Cần bổ sung hợp đồng đã ký, trạng thái gia hạn, giá trị hợp đồng và đồng ý tham chiếu khách hàng.',
+  salesPipeline:'Chưa có pipeline bán hàng được xác nhận. Nên theo dõi theo từng cơ hội: khách hàng tiềm năng, đã khám phá nhu cầu, dùng thử, đàm phán, ký hợp đồng, doanh thu dự kiến, xác suất và ngày dự kiến chốt. Không tính khách hàng tiềm năng hoặc thử nghiệm vào doanh thu đã ký.',
+  usageGrowth:'Chưa cung cấp số tài khoản đăng ký, người dùng hoạt động tuần/tháng, cửa hàng đã kết nối dữ liệu, số giao dịch xử lý hoặc tỷ lệ kích hoạt. Theo dõi cohort theo tháng và tách tài khoản dùng thử khỏi khách hàng trả phí.',
+  retention:'Chưa có dữ liệu churn, giữ chân logo, giữ chân doanh thu hoặc cohort. Cần định nghĩa khách hàng hoạt động, chu kỳ gia hạn và cách xử lý mùa vụ; báo cáo theo tháng bắt đầu sử dụng.',
+  unitEconomics:'Chưa có CAC, LTV, tỷ lệ chuyển đổi dùng thử, biên lợi nhuận theo khách hàng hoặc thời gian hoàn vốn được xác minh. Chi phí phục vụ cần gồm phí tích hợp dữ liệu, hạ tầng, hỗ trợ và bán hàng. Có thể phân tích kịch bản sau khi thay giả định giá và tỷ lệ duy trì bằng dữ liệu thực.',
+  revenueBreakdown:'CSV tài chính đính kèm là kịch bản lập kế hoạch 12 tháng, đơn vị triệu đồng, chưa phải báo cáo kế toán và chưa được kiểm toán/đối soát. Chưa có doanh thu thực tế theo thuê bao, phí triển khai, khách hàng hay kênh bán. Thay bằng sổ doanh thu và sao kê khi có dữ liệu thật.',
+  pnlBurn:'CSV tài chính đính kèm là kịch bản lập kế hoạch; doanh thu, giá vốn, chi phí vận hành, tiền mặt, dòng tiền hoạt động và phải thu đều cần được thay/đối chiếu bằng chứng từ. Chưa có P&L, bảng cân đối, sao kê hoặc chính sách ghi nhận doanh thu đã kiểm tra.',
+  runway:'Theo kịch bản CSV, runway được tính từ tiền mặt cuối kỳ chia cho mức đốt tiền hoạt động bình quân ba tháng gần nhất. Con số này không phải dự báo chắc chắn; chưa tính đầy đủ lịch giải ngân, nợ phải trả, thuế, vốn lưu động hoặc phương án gọi vốn. Cần cập nhật số dư ngân hàng và nghĩa vụ thanh toán.',
+  forecast:'Kịch bản CSV giả định doanh thu tăng dần và chi phí vận hành tăng chậm; chưa được hiệu chỉnh theo khách hàng thực. Dự báo cần có ba kịch bản, giả định số khách hàng mới, giá thuê bao, churn, chi phí tích hợp, tuyển dụng và thời điểm thu tiền; cập nhật hàng tháng so với thực tế.',
+  useOfFunds:'Kế hoạch vòng này: 40% sản phẩm/bảo mật/hạ tầng; 25% tích hợp hóa đơn và ngân hàng; 25% bán hàng, triển khai và hỗ trợ; 10% pháp lý/vận hành. Cần gắn từng khoản với ngân sách, người phụ trách, mốc sản phẩm và kết quả đo được.',
+  capTable:'Mục tiêu vòng Seed 3.200 triệu đồng; hồ sơ ghi nhận đã huy động 900 triệu đồng. Chưa có cap table, tỷ lệ sở hữu, định giá, ESOP, cổ đông, SAFE/trái phiếu chuyển đổi hoặc hồ sơ vòng trước. Cần đối chiếu giấy tờ pháp nhân và chứng từ góp vốn.',
+  founderBios:'Hồ sơ đang nêu CEO phụ trách sản phẩm SaaS, CTO phụ trách nền tảng dữ liệu và CFO phụ trách nghiệp vụ kế toán. Chưa có CV, thành tích, cam kết toàn thời gian, tỷ lệ sở hữu hoặc hồ sơ xác minh danh tính; các vai trò cần được startup xác nhận trước thẩm định.',
+  ipOwnership:'Chưa cung cấp đăng ký pháp nhân, thỏa thuận chuyển giao mã nguồn, quyền sở hữu nhãn hiệu, hợp đồng nhân sự/nhà thầu hoặc giấy phép thư viện bên thứ ba. Cần lập danh mục tài sản trí tuệ và xác nhận quyền sở hữu thuộc pháp nhân.',
+  legalRisks:'Rủi ro cần rà soát: bảo vệ dữ liệu tài chính và dữ liệu cá nhân; phân quyền và lưu nhật ký truy cập; điều khoản đồng bộ với ngân hàng/nhà cung cấp hóa đơn; an toàn thông tin; trách nhiệm khi số liệu nhập sai; lưu trữ và xóa dữ liệu. Chưa có ý kiến pháp lý, chứng nhận bảo mật hay đánh giá tác động dữ liệu được cung cấp.'
+});
+
 function startupTeam(id) {
   const [leader, coLeader, member]=teams[id];
   const biography='Phụ trách phát triển sản phẩm, phối hợp đối tác và triển khai kế hoạch tăng trưởng.';
@@ -53,8 +92,8 @@ export function createMarketplaceStartups(stamp) {
     profile:{ name, industry, stage, location, summary, target, ...details[id], market, teamRoster:startupTeam(id) },
     published:true,
     publishedAt:stamp,
-    financial:null,
-    diligence:{},
+    financial:id==='startup-so-may'?{csv:soMayFinancialCsv,name:'Sổ Mây - kịch bản tài chính 12 tháng',updatedAt:stamp}:null,
+    diligence:id==='startup-so-may'?{...SO_MAY_DILIGENCE}:{},
     createdAt:stamp,
     updatedAt:stamp,
     catalogListing:true,

@@ -99,8 +99,22 @@ export function createAPI({store=createWorkflowStore({filePath:process.env.WORKF
         const snapshot=store.snapshot(userId);
         const workspace=body.workspaceId?snapshot.workspaces.find(w=>w.id===body.workspaceId):null;
         if(body.workspaceId&&!workspace)throw fail(403,'FORBIDDEN','Bạn chưa có quyền xem dự án này.');
-        const context={role:snapshot.user.role,plan:snapshot.plan.name,remainingTokens:snapshot.usage.remaining,projects:snapshot.marketplace.map(p=>({name:p.profile.name,industry:p.profile.industry,summary:p.profile.summary.slice(0,160)})).slice(0,6)};
-        if(workspace){context.workspace={name:workspace.name,goal:workspace.goal,profile:workspace.profile};if(workspace.financial){const a=analyze(parseCSV(workspace.financial.csv));context.financialMetrics={latest:a.latest,margin:a.margin,burn:a.burn,runway:a.runway};}}
+        const fold=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLocaleLowerCase('vi');
+        const projectList=snapshot.marketplace.map(p=>({id:p.id,name:p.profile.name,industry:p.profile.industry,summary:p.profile.summary.slice(0,160)})).slice(0,6);
+        const context={role:snapshot.user.role,plan:snapshot.plan.name,remainingTokens:snapshot.usage.remaining,projects:projectList};
+        if(workspace){context.workspace={name:workspace.name,goal:workspace.goal,profile:workspace.profile,diligence:workspace.diligence};if(workspace.financial){const rows=parseCSV(workspace.financial.csv),a=analyze(rows);context.financialMetrics={latest:a.latest,margin:a.margin,burn:a.burn,runway:a.runway};context.financialRows=rows;context.financialDataNote='Kịch bản lập kế hoạch, chưa được kiểm toán hoặc đối soát; không trình bày như kết quả hoạt động đã xác minh.';}}
+        else {
+          const question=fold(body.question);
+          const matched=snapshot.marketplace.find(p=>question.includes(fold(p.profile.name))||question.includes(fold(p.id)));
+          if(matched){
+            context.projectForAnalysis={id:matched.id,name:matched.profile.name,goal:matched.profile.summary,profile:matched.profile};
+            const accessible=snapshot.workspaces.find(w=>w.id===matched.id);
+            if(accessible){
+              context.projectForAnalysis.diligence=accessible.diligence;
+              if(accessible.financial){const rows=parseCSV(accessible.financial.csv),a=analyze(rows);context.projectForAnalysis.financialMetrics={latest:a.latest,margin:a.margin,burn:a.burn,runway:a.runway};context.projectForAnalysis.financialRows=rows;context.projectForAnalysis.financialDataNote='Kịch bản lập kế hoạch, chưa được kiểm toán hoặc đối soát; không trình bày như kết quả hoạt động đã xác minh.';}
+            }
+          }
+        }
         const payload=buildChatPrompt({question,context});const inputTokensEstimate=estimateInputTokens(payload);
         const maxOutputTokens=Math.min(512,settings.maxOutputTokens,snapshot.usage.remaining-inputTokensEstimate);
         if(maxOutputTokens<128)throw fail(429,'LIMIT','Không đủ token cho câu hỏi này.');

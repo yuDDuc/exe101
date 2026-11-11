@@ -288,7 +288,7 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
       const workspaces=loaded.workspaces.map(current=>{
         const example=byId.get(current?.id);
         if(!example)return current;
-        const next={...current,...example,financial:current.financial,diligence:current.diligence,createdAt:current.createdAt,publishedAt:current.publishedAt||example.publishedAt,updatedAt:current.updatedAt};
+        const next={...current,...example,financial:current.financial||example.financial,diligence:{...example.diligence,...(current.diligence||{})},createdAt:current.createdAt,publishedAt:current.publishedAt||example.publishedAt,updatedAt:current.updatedAt};
         if(!sameValue(next,current)){next.updatedAt=stamp;catalogChanged=true;}
         return next;
       });
