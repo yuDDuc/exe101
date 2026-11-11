@@ -2,6 +2,12 @@
 
 This package is an isolated preprocessing layer for an AI request. It bounds and validates the question, retrieves only relevant public fields, scans uploaded files and OCR text **before** they enter a prompt, sizes the request/output, and validates the answer after generation.
 
+## What was adopted from `AvitationRAG`
+
+The aviation project contributes practical retrieval patterns: about 1,000-character chunks with 200-character overlap, source/page/slide metadata, duplicate removal, a weak-match cutoff, and an explicit prompt-injection scenario list. This package now applies those ideas to long uploaded files: it retrieves matching chunks instead of truncating a file to its first 800 characters, labels PDF pages and Office slides/sheets, deduplicates repeated OCR/text chunks, and returns no evidence when lexical coverage is too weak. The injection detector also covers raw-context extraction, role changes, authority overrides, and filter bypass requests from that scenario list.
+
+The aviation project uses multilingual sentence-transformer embeddings and FAISS. This package keeps BM25-style retrieval because the current startup catalog is small and the deployment should not need a large local model or a native vector database. The FAISS persistence pattern enables dangerous pickle deserialization; this package does not copy that pattern. Semantic caching also stays out of this preprocessing worker because it has no authenticated user namespace and must not reuse private answers across users. A cache belongs in the authenticated API and its key must include the caller scope, model version, and retrieved-context fingerprint.
+
 ## File and image handling
 
 - Allowed formats: UTF-8 TXT/Markdown/CSV/JSON, PDF, DOCX/XLSX/PPTX, PNG/JPEG/WEBP/TIFF/BMP.

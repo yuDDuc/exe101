@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import zipfile
 from pathlib import PurePath
 from typing import Any
@@ -131,7 +132,7 @@ def _extract_pdf(data: bytes) -> tuple[str, int, bool]:
             text = page.extract_text() or ""
         except Exception as error:
             raise GuardrailError("PDF_PARSE", f"Không trích được trang PDF {index + 1}; tệp bị chặn.") from error
-        pages.append(text)
+        pages.append(f"[Page {index + 1}]\n{text}" if text.strip() else "")
         # Scan rendered pixels too, so text overlaid as an image cannot bypass extraction.
         try:
             bitmap = pdf[index].render(scale=1.5)
@@ -143,7 +144,7 @@ def _extract_pdf(data: bytes) -> tuple[str, int, bool]:
             raise GuardrailError("PDF_OCR", f"Không quét OCR được trang PDF {index + 1}; tệp bị chặn.") from error
         if scanned.strip():
             did_ocr = True
-            pages.append(scanned)
+            pages.append(f"[Page {index + 1} OCR]\n{scanned}")
     text = "\n".join(part for part in pages if part.strip())
     if not text.strip():
         raise GuardrailError("PDF_EMPTY", "PDF không có nội dung đọc được; tệp bị chặn.")
@@ -217,6 +218,12 @@ def _zip_text(data: bytes, extension: str) -> tuple[str, int, bool]:
         if any(key.casefold().endswith("targetmode") and value.casefold() == "external" for node in root.iter() for key, value in node.attrib.items()):
             raise GuardrailError("OFFICE_EXTERNAL", "Tài liệu có liên kết ngoài chưa thể kiểm tra; tệp bị chặn.")
         matched_files += 1
+        slide_match = re.search(r"ppt/slides/slide(\d+)\.xml$", name)
+        sheet_match = re.search(r"xl/worksheets/sheet(\d+)\.xml$", name)
+        if slide_match:
+            chunks.append(f"[Slide {slide_match.group(1)}]")
+        elif sheet_match:
+            chunks.append(f"[Sheet {sheet_match.group(1)}]")
         for node in root.iter():
             if node.text and node.text.strip():
                 chunks.append(node.text.strip())
