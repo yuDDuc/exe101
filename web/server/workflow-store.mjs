@@ -231,7 +231,7 @@ function validatedState(value) {
       if(r.requestId!==null)text(r.requestId,'Mã yêu cầu',1,1000);
     }
     for(const m of state.aiChats) {
-      keys(m,['id','authorId','workspaceId','text','tokenUsage','model','provider','requestId','createdAt']);actorId(m.authorId);optionalWorkspace(m.workspaceId,m.authorId);text(m.text,'Phản hồi AI',1,16000);timestamp(m.createdAt);for(const field of ['model','provider'])text(m[field],field,1,150);
+      keys(m,['id','authorId','workspaceId','sessionId','question','text','tokenUsage','model','provider','requestId','createdAt']);actorId(m.authorId);optionalWorkspace(m.workspaceId,m.authorId);if(m.sessionId!==undefined)text(m.sessionId,'Phiên chat',1,100);if(m.question!==undefined)text(m.question,'Câu hỏi',1,4000);text(m.text,'Phản hồi AI',1,16000);timestamp(m.createdAt);for(const field of ['model','provider'])text(m[field],field,1,150);
       keys(m.tokenUsage,['inputTokens','outputTokens','totalTokens','estimated']);actualUsage(m.tokenUsage);if(m.tokenUsage.estimated!==false)throw backupInvalid();if(m.requestId!==null)text(m.requestId,'Mã yêu cầu',1,1000);
     }
     const charged={},linkedReports=new Set(),linkedChats=new Set();
@@ -600,14 +600,14 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
     if(completed.workspaceId&&!canRead(data,userId,workspace(data,completed.workspaceId))) throw error(403,'FORBIDDEN','Quyền truy cập đã bị thu hồi trong lúc phân tích.');
     return structuredClone(completed);
   }
-  function finishChat(userId,reservationId,result) {
+  function finishChat(userId,reservationId,result,metadata={}) {
     const next=structuredClone(data), pending=reservation(next,userId,reservationId);
     if(pending.kind!=='chat') throw error(409,'CONFLICT','Lượt này không phải trò chuyện AI.');
     const consumed=actualUsage(result.usage), reply=text(result.text,'Nội dung AI',1,16000);
     const current=bucket(next,userId,pending.bucketKey);
     current.aiTokens=Math.max(0,current.aiTokens-pending.reservedTokens+consumed.totalTokens);
     pending.status='completed';pending.actualTokens=consumed.totalTokens;pending.finishedAt=now().toISOString();
-    const message={id:id('ai-chat'),authorId:userId,workspaceId:pending.workspaceId,text:reply,tokenUsage:{...consumed,estimated:false},model:text(result.model,'Model',1,150),provider:text(result.provider,'Nhà cung cấp',1,150),requestId:typeof result.requestId==='string'?result.requestId:null,createdAt:now().toISOString()};
+    const message={id:id('ai-chat'),authorId:userId,workspaceId:pending.workspaceId,sessionId:metadata.sessionId===undefined?undefined:text(metadata.sessionId,'Phiên chat',1,100),question:metadata.question===undefined?undefined:text(metadata.question,'Câu hỏi',1,4000),text:reply,tokenUsage:{...consumed,estimated:false},model:text(result.model,'Model',1,150),provider:text(result.provider,'Nhà cung cấp',1,150),requestId:typeof result.requestId==='string'?result.requestId:null,createdAt:now().toISOString()};
     next.aiChats.push(message);pending.messageId=message.id;persist(next);
     if(message.workspaceId&&!canRead(data,userId,workspace(data,message.workspaceId))) throw error(403,'FORBIDDEN','Quyền truy cập đã bị thu hồi trong lúc AI trả lời.');
     return structuredClone(message);

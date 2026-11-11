@@ -91,6 +91,9 @@ export function createAPI({store=createWorkflowStore({filePath:process.env.WORKF
       }
       if(req.method==='POST'&&url.pathname==='/api/ai/chat') {
         const body=await json(req),settings=config();
+        if(typeof body.question!=='string'||!body.question.trim()||body.question.length>4000)throw fail(400,'INVALID','Câu hỏi trống hoặc vượt giới hạn 4.000 ký tự.');
+        const question=body.question.trim(),sessionId=body.sessionId===undefined?'legacy':body.sessionId;
+        if(typeof sessionId!=='string'||!/^[A-Za-z0-9_-]{1,100}$/.test(sessionId))throw fail(400,'INVALID','Phiên chat không hợp lệ.');
         if(!settings.configured)throw fail(503,'AI_NOT_CONFIGURED','Máy chủ chưa có khóa API AI hợp lệ.');
         if(inFlight.has(userId))throw fail(409,'AI_BUSY','Một yêu cầu AI đang chạy. Vui lòng đợi.');
         const snapshot=store.snapshot(userId);
@@ -98,11 +101,11 @@ export function createAPI({store=createWorkflowStore({filePath:process.env.WORKF
         if(body.workspaceId&&!workspace)throw fail(403,'FORBIDDEN','Bạn chưa có quyền xem dự án này.');
         const context={role:snapshot.user.role,plan:snapshot.plan.name,remainingTokens:snapshot.usage.remaining,projects:snapshot.marketplace.map(p=>({name:p.profile.name,industry:p.profile.industry,summary:p.profile.summary.slice(0,160)})).slice(0,6)};
         if(workspace){context.workspace={name:workspace.name,goal:workspace.goal,profile:workspace.profile};if(workspace.financial){const a=analyze(parseCSV(workspace.financial.csv));context.financialMetrics={latest:a.latest,margin:a.margin,burn:a.burn,runway:a.runway};}}
-        const payload=buildChatPrompt({question:body.question,context});const inputTokensEstimate=estimateInputTokens(payload);
+        const payload=buildChatPrompt({question,context});const inputTokensEstimate=estimateInputTokens(payload);
         const maxOutputTokens=Math.min(512,settings.maxOutputTokens,snapshot.usage.remaining-inputTokensEstimate);
         if(maxOutputTokens<128)throw fail(429,'LIMIT','Không đủ token cho câu hỏi này.');
         const reservation=store.beginChat(userId,{workspaceId:body.workspaceId,inputTokensEstimate,maxOutputTokens});inFlight.add(userId);let result;
-        try{result=await chatProvider({question:body.question,context,config:settings,maxOutputTokens});const reply=store.finishChat(userId,reservation.id,result);return send(res,200,{reply,snapshot:store.snapshot(userId)});}
+        try{result=await chatProvider({question,context,config:settings,maxOutputTokens});const reply=store.finishChat(userId,reservation.id,result,{question,sessionId});return send(res,200,{reply,snapshot:store.snapshot(userId)});}
         catch(error){settleFailure(userId,reservation.id,error,result);throw error;}finally{inFlight.delete(userId);}
       }
       throw fail(404,'NOT_FOUND','Không tìm thấy API.');
