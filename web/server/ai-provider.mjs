@@ -132,17 +132,18 @@ function verifyConfig(config) {
   if (!config?.configured || !config?.apiKey) throw aiError('AI_NOT_CONFIGURED', config?.configurationError || 'Chưa cấu hình API AI trên máy chủ.', 503, { usageUnknown: false });
 }
 
-async function callResponses({ payload, config, signal, fetchImpl = globalThis.fetch, maxOutputTokens }) {
+async function callResponses({ payload, config, signal, fetchImpl = globalThis.fetch, maxOutputTokens, reasoningEffort }) {
   verifyConfig(config);
   if (signal?.aborted) throw aiError('AI_CANCELLED', 'Yêu cầu AI đã được hủy trước khi gửi.', 499, { usageUnknown: false });
   const outputLimit = maxOutputTokens ?? config.maxOutputTokens;
   if (!Number.isInteger(outputLimit) || outputLimit < 128 || outputLimit > config.maxOutputTokens) throw aiError('AI_INVALID_INPUT', 'Giới hạn đầu ra AI không hợp lệ.', 400);
+  const effort = reasoningEffort ?? config.reasoningEffort;
   const timeout = AbortSignal.timeout(config.timeoutMs);
   const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
   const request = { ...payload, model: config.model, store: false, max_output_tokens: outputLimit };
-  if (/^gpt-[56](?:[.-]|$)/i.test(config.model)) request.reasoning = { effort: config.reasoningEffort };
+  if (/^gpt-[56](?:[.-]|$)/i.test(config.model)) request.reasoning = { effort };
   if (config.provider === 'DeepSeek') {
-    request.reasoning = { effort: config.reasoningEffort === 'medium' ? 'high' : config.reasoningEffort === 'minimal' ? 'low' : config.reasoningEffort };
+    request.reasoning = { effort: effort === 'medium' ? 'high' : effort === 'minimal' ? 'low' : effort };
     if (request.text?.format?.type === 'json_schema') {
       request.text = { ...request.text, format: { ...request.text.format } };
       delete request.text.format.strict;
@@ -193,7 +194,7 @@ async function callResponses({ payload, config, signal, fetchImpl = globalThis.f
   const requestId = requestIdentifier(body, response);
   const details = { usage, requestId, usageUnknown: !usage };
   if (!usage) throw aiError('AI_USAGE_MISSING', 'Dịch vụ AI chưa trả số token thực tế. Báo cáo chưa được ghi nhận.', 502, details);
-  if (body.status !== 'completed') throw aiError('AI_INCOMPLETE', 'AI chưa hoàn tất báo cáo trong giới hạn đầu ra. Token đã sử dụng vẫn được ghi nhận.', 502, details);
+  if (body.status !== 'completed') throw aiError('AI_INCOMPLETE', 'Yêu cầu AI chưa hoàn tất trong giới hạn đầu ra. Token đã sử dụng vẫn được ghi nhận.', 502, details);
   const result = outputText(body);
   if (result.refused) throw aiError('AI_REFUSAL', 'AI không thể xử lý yêu cầu này. Vui lòng xem lại dữ liệu đã cung cấp.', 422, details);
   if (!result.text.trim()) throw aiError('AI_EMPTY_RESPONSE', 'AI chưa trả nội dung báo cáo.', 502, details);
@@ -216,7 +217,7 @@ export async function generateFinancialReport({ rows, analysis, config = getAICo
 }
 
 export async function generateChatReply({ question, context, config = getAIConfig(), signal, fetchImpl, maxOutputTokens }) {
-  const result = await callResponses({ payload: buildChatPrompt({question,context}), config, signal, fetchImpl, maxOutputTokens });
+  const result = await callResponses({ payload: buildChatPrompt({question,context}), config, signal, fetchImpl, maxOutputTokens, reasoningEffort: config.provider === 'DeepSeek' ? 'none' : undefined });
   const { text, ...metadata } = result;
   return { ...metadata, text };
 }
