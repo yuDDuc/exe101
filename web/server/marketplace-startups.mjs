@@ -25,7 +25,7 @@ export function createInvestorCaseListings(workspaces) {
     const workspace=byId.get(listing.workspaceId);
     if(!workspace)return [];
     const {profile}=workspace;
-    return [{...listing,workspaceName:profile.name,industry:profile.industry,stage:profile.stage,location:profile.location,target:profile.target,raised:profile.raised}];
+    return [{...listing,workspaceName:profile.name,industry:profile.industry,stage:profile.stage,location:profile.location,target:profile.target,raised:profile.raised,useOfFunds:profile.useOfFunds}];
   });
 }
 
