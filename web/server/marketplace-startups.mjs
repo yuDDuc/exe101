@@ -11,6 +11,24 @@ const startups = [
   { id:'startup-bep-gan', name:'Bếp Gần', industry:'E-commerce', stage:'Seed', location:'Nha Trang', target:2600, goal:'Mở rộng kênh đặt nguyên liệu định kỳ cho nhà hàng địa phương.', summary:'Công cụ đặt hàng theo lịch cho nhà hàng, kết nối nhu cầu nguyên liệu với nhà cung cấp địa phương.', market:'Khách hàng mục tiêu: nhà hàng độc lập, bếp ăn và nhà cung cấp thực phẩm địa phương.' },
 ];
 
+const investorCaseListings = [
+  { id:'case-tai-sinh-nong-seed', workspaceId:'startup-tai-sinh-nong', title:'Tái Sinh Nông · Mở rộng vật liệu đóng gói sinh học', summary:'Gọi vốn Pre-seed để tăng năng lực thu gom phụ phẩm, hoàn thiện thử nghiệm vật liệu và phát triển kênh bán hàng với hợp tác xã, nhà sản xuất bao bì và doanh nghiệp thực phẩm.' },
+  { id:'case-so-may-seed', workspaceId:'startup-so-may', title:'Sổ Mây · Quản trị dòng tiền cho doanh nghiệp nhỏ', summary:'Gọi vốn Seed để hoàn thiện nền tảng quản trị tài chính, tích hợp hóa đơn và ngân hàng, tăng cường bảo mật, rồi mở rộng triển khai tới cửa hàng và doanh nghiệp nhỏ.' },
+  { id:'case-bac-si-so-preseed', workspaceId:'startup-bac-si-so', title:'Bác Sĩ Số · Số hóa vận hành phòng khám', summary:'Gọi vốn Pre-seed để hoàn thiện lịch hẹn, nhắc tái khám và quy trình chăm sóc sau khám; tập trung vào tích hợp, an toàn dữ liệu và triển khai tại phòng khám độc lập.' },
+  { id:'case-cho-nong-seed', workspaceId:'startup-cho-nong', title:'Chợ Nông · Kết nối nông hộ với bếp ăn', summary:'Gọi vốn Seed để mở rộng đặt hàng nông sản theo mùa, phát triển nhà cung cấp và cải thiện khâu giao nhận cho nhà hàng, bếp ăn tập thể và hợp tác xã.' },
+  { id:'case-dien-sach-series-a', workspaceId:'startup-dien-sach', title:'Điện Sạch · Theo dõi năng lượng nhà xưởng', summary:'Gọi vốn Series A để triển khai thêm hệ thống đo đếm, phân tích mức tiêu thụ điện và hỗ trợ nhà xưởng xây kế hoạch tiết kiệm năng lượng.' },
+];
+
+export function createInvestorCaseListings(workspaces) {
+  const byId=new Map(workspaces.filter(workspace=>workspace.published).map(workspace=>[workspace.id,workspace]));
+  return investorCaseListings.flatMap(listing=>{
+    const workspace=byId.get(listing.workspaceId);
+    if(!workspace)return [];
+    const {profile}=workspace;
+    return [{...listing,workspaceName:profile.name,industry:profile.industry,stage:profile.stage,location:profile.location,target:profile.target,raised:profile.raised}];
+  });
+}
+
 const details = {
   'startup-tai-sinh-nong': { fundingRoundIndex:1, fundingRoundTotal:4, raised:420, traction:'Đã khảo sát 12 hợp tác xã và hoàn thành 3 lô thử nghiệm vật liệu; doanh thu thương mại chưa được công bố.', customerReferences:'HTX Đồng Xanh\nBao Bì Mekong', team:'Đội ngũ kết hợp kinh nghiệm về chuỗi cung ứng nông nghiệp, vật liệu sinh học và vận hành sản phẩm.', useOfFunds:'Thử nghiệm vật liệu sinh học (40%)\nThiết bị thu gom và sơ chế (30%)\nPhát triển sản phẩm (20%)\nPháp lý và vận hành (10%)' },
   'startup-so-may': { fundingRoundIndex:2, fundingRoundTotal:4, raised:900, traction:'Kế hoạch thử nghiệm: tuyển nhóm tối đa 80 cửa hàng để kiểm tra quy trình nhập dữ liệu, đối soát, công nợ và dự báo tiền mặt. Chưa có số liệu người dùng hoạt động, khách hàng trả phí, doanh thu định kỳ hoặc tỷ lệ duy trì được xác minh trong hồ sơ này.', customerReferences:'Chưa công bố hợp đồng hoặc khách hàng trả phí. Nhóm thử nghiệm 80 cửa hàng là mục tiêu kế hoạch, không phải số lượng người dùng đã xác nhận.', team:'Đội ngũ định hướng sản phẩm SaaS, tích hợp dữ liệu kế toán và ngân hàng, bảo mật thông tin tài chính, hỗ trợ triển khai cho doanh nghiệp nhỏ. Hồ sơ kinh nghiệm và phân công toàn thời gian cần được bổ sung để thẩm định.', useOfFunds:'Phát triển sản phẩm, bảo mật và hạ tầng (40%)\nTích hợp hóa đơn điện tử, ngân hàng và nền tảng bán hàng (25%)\nBán hàng, triển khai và hỗ trợ khách hàng (25%)\nPháp lý, tuân thủ và vận hành (10%)' },

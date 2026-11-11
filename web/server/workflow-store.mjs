@@ -3,7 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { ROLE_PLANS, weekKey, parseCSV, analyze } from '../domain.js';
 import { DEEP_DILIGENCE_KEYS } from '../diligence.js';
-import { createMarketplaceStartups, LEGACY_MARKETPLACE_IDS } from './marketplace-startups.mjs';
+import { createInvestorCaseListings, createMarketplaceStartups, LEGACY_MARKETPLACE_IDS } from './marketplace-startups.mjs';
 
 export const DEMO_USERS = Object.freeze({
   founder: Object.freeze({ id: 'founder', role: 'founder', name: 'Startup' }),
@@ -372,6 +372,7 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
       workspaceDraft: actor.role==='founder' ? data.workspaceDraft : null,
       workspaces: accessible.map(w => ({ ...w, isOwner: w.ownerId === userId, canManage: w.ownerId === userId })),
       marketplace: data.workspaces.filter(w => w.published).map(publicProject),
+      publicCases: createInvestorCaseListings(data.workspaces),
       cases: data.cases.filter(item=>item.ownerId===userId),
       watchlist: data.accounts[userId].watchlist,
       compare: data.accounts[userId].compare,
