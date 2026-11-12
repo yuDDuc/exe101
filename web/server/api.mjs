@@ -67,6 +67,8 @@ export function createAPI({store=createWorkflowStore({filePath:process.env.WORKF
       }
       const financial=url.pathname.match(/^\/api\/workflow\/workspaces\/([^/]+)\/financial$/);
       if(req.method==='GET'&&financial)return send(res,200,store.getFinancial(userId,decodeURIComponent(financial[1])));
+      const attachment=url.pathname.match(/^\/api\/workflow\/workspaces\/([^/]+)\/attachments\/([^/]+)$/);
+      if(req.method==='GET'&&attachment)return send(res,200,store.getAttachment(userId,decodeURIComponent(attachment[1]),decodeURIComponent(attachment[2])));
       if(req.method==='POST'&&url.pathname==='/api/ai/analysis'){
         const body=await json(req);const settings=config();if(!settings.configured)throw fail(503,'AI_NOT_CONFIGURED','Máy chủ chưa có khóa API AI hợp lệ.');
         if(inFlight.has(userId))throw fail(409,'AI_BUSY','Một phân tích đang chạy. Hãy đợi kết quả trước khi gửi tiếp.');
@@ -101,14 +103,15 @@ export function createAPI({store=createWorkflowStore({filePath:process.env.WORKF
         const workspace=body.workspaceId?snapshot.workspaces.find(w=>w.id===body.workspaceId):null;
         if(body.workspaceId&&!workspace)throw fail(403,'FORBIDDEN','Bạn chưa có quyền xem dự án này.');
         const fold=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLocaleLowerCase('vi');
+        const textProfile=profile=>({ ...profile, media:profile.media?.productDemoUrl?{productDemoUrl:profile.media.productDemoUrl}:undefined, teamRoster:profile.teamRoster?{...profile.teamRoster,leader:profile.teamRoster.leader&&(({photo,photoConsent,...person})=>person)(profile.teamRoster.leader),coLeader:profile.teamRoster.coLeader&&(({photo,photoConsent,...person})=>person)(profile.teamRoster.coLeader),members:(profile.teamRoster.members||[]).map(({photo,photoConsent,...person})=>person)}:undefined });
         const projectList=snapshot.marketplace.map(p=>({id:p.id,name:p.profile.name,industry:p.profile.industry,summary:p.profile.summary.slice(0,160)})).slice(0,6);
         const context={role:snapshot.user.role,plan:snapshot.plan.name,remainingTokens:snapshot.usage.remaining,projects:projectList};
-        if(workspace){context.workspace={name:workspace.name,goal:workspace.goal,profile:workspace.profile,diligence:workspace.diligence};if(workspace.financial){const rows=parseCSV(workspace.financial.csv),a=analyze(rows);context.financialMetrics={latest:a.latest,margin:a.margin,burn:a.burn,runway:a.runway};context.financialRows=rows;context.financialDataNote='Kịch bản lập kế hoạch, chưa được kiểm toán hoặc đối soát; không trình bày như kết quả hoạt động đã xác minh.';}}
+        if(workspace){context.workspace={name:workspace.name,goal:workspace.goal,profile:textProfile(workspace.profile),diligence:workspace.diligence};if(workspace.financial){const rows=parseCSV(workspace.financial.csv),a=analyze(rows);context.financialMetrics={latest:a.latest,margin:a.margin,burn:a.burn,runway:a.runway};context.financialRows=rows;context.financialDataNote='Kịch bản lập kế hoạch, chưa được kiểm toán hoặc đối soát; không trình bày như kết quả hoạt động đã xác minh.';}}
         else {
           const question=fold(body.question);
           const matched=snapshot.marketplace.find(p=>question.includes(fold(p.profile.name))||question.includes(fold(p.id)));
           if(matched){
-            context.projectForAnalysis={id:matched.id,name:matched.profile.name,goal:matched.profile.summary,profile:matched.profile};
+            context.projectForAnalysis={id:matched.id,name:matched.profile.name,goal:matched.profile.summary,profile:textProfile(matched.profile)};
             const accessible=snapshot.workspaces.find(w=>w.id===matched.id);
             if(accessible){
               context.projectForAnalysis.diligence=accessible.diligence;

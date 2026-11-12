@@ -265,8 +265,12 @@ export const money = n => new Intl.NumberFormat('vi-VN').format(Math.round(n));
 export function capitalAmount(millions) {
   const value = Number(millions);
   if (!Number.isFinite(value) || value < 0) return 'Chưa công bố';
-  const dong = Math.round(value * 1_000_000);
-  return `${new Intl.NumberFormat('vi-VN').format(dong)} đ`;
+  const format = number => new Intl.NumberFormat('vi-VN', {maximumFractionDigits:3}).format(number);
+  if (value < 1) return `${format(Math.round(value * 1_000_000))} ₫`;
+  if (value < 1000) return `${format(value)} triệu ₫`;
+  const billions = Math.floor(value / 1000);
+  const remainder = Number((value - billions * 1000).toFixed(3));
+  return `${format(billions)} tỷ${remainder ? ` ${format(remainder)} triệu` : ''} ₫`;
 }
 export const pct = n => n===null || !Number.isFinite(n) ? 'N/A' : `${n>0?'+':''}${n.toFixed(1).replace('.',',')}%`;
 export const escapeHTML = v => String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

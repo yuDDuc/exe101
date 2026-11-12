@@ -24,6 +24,31 @@ function approveAndPay(store,workspaceId,investor='investor') {
 }
 const aiResult=(tokens=150)=>({model:'test-model',provider:'test-provider',requestId:'request-test',report:{summary:'Dữ liệu cho thấy tăng trưởng doanh thu nhưng dòng tiền âm.',riskLevel:'medium',strengths:['Doanh thu tăng'],risks:[{title:'Dòng tiền âm',reason:'Cần vốn hoạt động',evidence:'Dòng tiền hoạt động -50 triệu đồng tháng 2026-09'}],questions:['Khi nào hòa vốn?'],limitations:['Chỉ dữ liệu được cung cấp']},usage:{inputTokens:tokens-50,outputTokens:50,totalTokens:tokens}});
 
+test('founder media is public only after publishing; private documents follow live access',()=>{
+  const store=createWorkflowStore();
+  const image=`data:image/webp;base64,${Buffer.from('RIFF0000WEBPVP8 0000').toString('base64')}`;
+  const pdf=`data:application/pdf;base64,${Buffer.from('%PDF-1.4\nPrivate evidence').toString('base64')}`;
+  const project=store.act('founder',{type:'create-workspace',name:'Case có hình',goal:'Hồ sơ có hình và tài liệu',profile:{...profile,media:{cover:image,logo:image,productImage:image,productDemoUrl:'https://example.com/product'},teamRoster:{leader:{name:'Minh',title:'CEO',bio:'',photo:image,photoConsent:true}}}}).workspaces[0];
+  assert.equal(store.snapshot('investor').marketplace.length,0);
+  store.act('founder',{type:'add-attachment',workspaceId:project.id,name:'pitch.pdf',data:pdf});
+  const document=store.snapshot('founder').workspaces[0].attachments[0];
+  assert.equal(document.data,undefined);
+  assert.throws(()=>store.getAttachment('investor',project.id,document.id),code('FORBIDDEN'));
+  store.act('founder',{type:'publish',workspaceId:project.id});
+  const listing=store.snapshot('investor').marketplace[0];
+  assert.equal(listing.profile.media.cover,image);
+  assert.equal(listing.profile.teamRoster.leader.photo,image);
+  assert.equal(JSON.stringify(listing).includes('Private evidence'),false);
+  assert.throws(()=>store.getAttachment('investor',project.id,document.id),code('FORBIDDEN'));
+  approveAndPay(store,project.id);
+  assert.equal(store.getAttachment('investor',project.id,document.id).data,pdf);
+  store.act('founder',{type:'decide-access',requestId:store.snapshot('founder').requests[0].id,decision:'revoked'});
+  assert.throws(()=>store.getAttachment('investor',project.id,document.id),code('FORBIDDEN'));
+  assert.throws(()=>store.act('investor',{type:'add-attachment',workspaceId:project.id,name:'extra.pdf',data:pdf}),code('FORBIDDEN'));
+  assert.throws(()=>store.act('founder',{type:'publish',workspaceId:project.id,profile:{teamRoster:{leader:{name:'Minh',photo:image,photoConsent:false},members:[]}}}),code('INVALID'));
+  assert.equal(createWorkflowStore({initialData:store.exportData()}).getAttachment('founder',project.id,document.id).data,pdf);
+});
+
 test('five public case fields stay visible while twenty diligence answers require approval',()=>{
   const store=createWorkflowStore();
   const fullProfile={...profile,traction:'2 khách hàng thử nghiệm trong tháng 10; chưa có doanh thu.',customerReferences:'Công ty A\nCông ty B',market:'Doanh nghiệp nhỏ tại TP.HCM; cần đối chiếu các giải pháp thay thế.',team:'Hai founder phụ trách sản phẩm và bán hàng.',useOfFunds:'Phát triển sản phẩm và thử kênh bán hàng.'};

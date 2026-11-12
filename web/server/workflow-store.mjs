@@ -33,11 +33,41 @@ const id = prefix => `${prefix}-${randomUUID()}`;
 const freshBucket = () => ({ aiTokens: 0, connections: 0, analyses: 0 });
 const freshData = () => ({ version: 1, revision: 0, accounts: Object.fromEntries(Object.keys(DEMO_USERS).map(userId => [userId, { tier: 'free', billing: 'monthly', ledgers: { free: freshBucket() }, watchlist: [], compare: [] }])), workspaces: [], cases: [], requests: [], messages: [], portfolio: [], reports: [], aiChats: [], reservations: [], workspaceDraft: null });
 
+function publicImage(value, label, maxBytes) {
+  if (value == null || value === '') return '';
+  if (typeof value !== 'string' || !/^data:image\/webp;base64,(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) throw error(400, 'INVALID', `${label} phải là ảnh WebP hợp lệ.`);
+  const bytes = Buffer.from(value.slice('data:image/webp;base64,'.length), 'base64');
+  if (bytes.length > maxBytes || bytes.length < 16 || bytes.toString('ascii', 0, 4) !== 'RIFF' || bytes.toString('ascii', 8, 12) !== 'WEBP') throw error(400, 'INVALID', `${label} vượt giới hạn hoặc không đúng định dạng.`);
+  return value;
+}
+function privateDocument(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw error(400, 'INVALID', 'Tài liệu không hợp lệ.');
+  const name = text(value.name, 'Tên tài liệu', 1, 120);
+  if (!/\.pdf$/i.test(name) || typeof value.data !== 'string' || !/^data:application\/pdf;base64,(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value.data)) throw error(400, 'INVALID', 'Chỉ nhận tài liệu PDF.');
+  const bytes = Buffer.from(value.data.slice('data:application/pdf;base64,'.length), 'base64');
+  if (bytes.length < 5 || bytes.length > 1_500_000 || bytes.toString('ascii', 0, 5) !== '%PDF-') throw error(400, 'INVALID', 'PDF không hợp lệ hoặc vượt 1,5 MB.');
+  return { name, data:value.data };
+}
+function normalizeMedia(value) {
+  if (value == null) return null;
+  if (typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !['cover','logo','productImage','productDemoUrl'].includes(key))) throw error(400, 'INVALID', 'Hình ảnh sản phẩm không hợp lệ.');
+  const cover = publicImage(value.cover, 'Ảnh bìa', 200_000);
+  const logo = publicImage(value.logo, 'Logo', 80_000);
+  const productImage = publicImage(value.productImage, 'Ảnh sản phẩm', 200_000);
+  const productDemoUrl = value.productDemoUrl ? text(value.productDemoUrl, 'Link sản phẩm', 1, 500) : '';
+  if (productDemoUrl) {
+    let url;try { url = new URL(productDemoUrl); } catch { throw error(400, 'INVALID', 'Link sản phẩm không hợp lệ.'); }
+    if (url.protocol !== 'https:' || url.username || url.password) throw error(400, 'INVALID', 'Link sản phẩm phải là HTTPS và không chứa tài khoản.');
+  }
+  return cover || logo || productImage || productDemoUrl ? { cover, logo, productImage, productDemoUrl } : null;
+}
 function normalizeTeamPerson(value, label) {
   if (value == null) return null;
-  if (typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !['name','title','bio'].includes(key))) throw error(400, 'INVALID', `${label} không hợp lệ.`);
+  if (typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !['name','title','bio','photo','photoConsent'].includes(key))) throw error(400, 'INVALID', `${label} không hợp lệ.`);
   if (!String(value.name || '').trim() && !String(value.title || '').trim() && !String(value.bio || '').trim()) return null;
-  return { name: text(value.name, `Tên ${label}`, 1, 100), title: text(value.title || '', `Chức danh ${label}`, 0, 120), bio: text(value.bio || '', `Giới thiệu ${label}`, 0, 500) };
+  const photo = publicImage(value.photo, `Ảnh ${label}`, 80_000);
+  if (photo && value.photoConsent !== true) throw error(400, 'INVALID', `Cần xác nhận quyền công bố ảnh ${label}.`);
+  return { name: text(value.name, `Tên ${label}`, 1, 100), title: text(value.title || '', `Chức danh ${label}`, 0, 120), bio: text(value.bio || '', `Giới thiệu ${label}`, 0, 500), ...(photo ? { photo, photoConsent:true } : {}) };
 }
 function normalizeTeamRoster(value) {
   if (value == null) return { leader: null, coLeader: null, members: [] };
@@ -55,6 +85,7 @@ function normalizeProfile(input, previous = {}) {
   const fundingRoundTotal = profile.fundingRoundTotal == null || profile.fundingRoundTotal === '' ? null : integer(profile.fundingRoundTotal, 'Tổng giai đoạn huy động dự kiến', 1, 20);
   if ((fundingRoundIndex === null) !== (fundingRoundTotal === null) || fundingRoundIndex > fundingRoundTotal) throw error(400, 'INVALID', 'Hãy nhập đủ giai đoạn hiện tại và tổng giai đoạn; giai đoạn hiện tại không được lớn hơn tổng.');
   const raised = profile.raised == null || profile.raised === '' ? null : number(profile.raised, 'Vốn đã huy động (triệu đồng)', 0, target);
+  const media = normalizeMedia(profile.media);
   return {
     name: text(profile.name, 'Tên startup', 1, 90),
     industry: text(profile.industry, 'Lĩnh vực', 1, 80),
@@ -71,6 +102,7 @@ function normalizeProfile(input, previous = {}) {
     team: optional(profile.team, 'Đội ngũ'),
     teamRoster: normalizeTeamRoster(profile.teamRoster),
     useOfFunds: optional(profile.useOfFunds, 'Sử dụng vốn'),
+    ...(media ? { media } : {}),
   };
 }
 function actualUsage(value) {
@@ -158,7 +190,7 @@ function validatedState(value) {
       keys(draft,['ownerId','name','goal','profile','savedAt']);
       if(draft.ownerId!=='founder')throw backupInvalid();
       text(draft.name,'Tên workspace',1,90);text(draft.goal,'Mục tiêu',1,500);
-      keys(draft.profile,['name','industry','stage','location','summary','target','fundingRoundIndex','fundingRoundTotal','raised','traction','customerReferences','market','team','teamRoster','useOfFunds']);
+      keys(draft.profile,['name','industry','stage','location','summary','target','fundingRoundIndex','fundingRoundTotal','raised','traction','customerReferences','market','team','teamRoster','useOfFunds','media']);
       draft.profile=normalizeProfile(draft.profile);timestamp(draft.savedAt);
     }
     const indexes={};
@@ -173,8 +205,12 @@ function validatedState(value) {
     const historicalAccess=(userId,workspaceId)=>project(workspaceId).ownerId===userId||state.requests.some(request=>request.workspaceId===workspaceId&&request.investorId===userId&&['approved','revoked'].includes(request.status));
     const optionalWorkspace=(workspaceId,userId)=>{if(workspaceId!==null){if(typeof workspaceId!=='string'||!historicalAccess(userId,workspaceId))throw backupInvalid();}};
     for(const w of state.workspaces) {
-      keys(w,['id','ownerId','name','goal','profile','published','publishedAt','financial','diligence','createdAt','updatedAt','catalogListing']);actorId(w.ownerId,'founder');text(w.name,'Tên workspace',1,90);text(w.goal,'Mục tiêu',1,500);if(w.catalogListing!==undefined&&typeof w.catalogListing!=='boolean')throw backupInvalid();
-      keys(w.profile,['name','industry','stage','location','summary','target','fundingRoundIndex','fundingRoundTotal','raised','traction','customerReferences','market','team','teamRoster','useOfFunds']);w.profile=normalizeProfile(w.profile);
+      keys(w,['id','ownerId','name','goal','profile','published','publishedAt','financial','diligence','createdAt','updatedAt','catalogListing','attachments']);actorId(w.ownerId,'founder');text(w.name,'Tên workspace',1,90);text(w.goal,'Mục tiêu',1,500);if(w.catalogListing!==undefined&&typeof w.catalogListing!=='boolean')throw backupInvalid();
+      if(w.attachments===undefined)w.attachments=[];
+      if(!Array.isArray(w.attachments)||w.attachments.length>3)throw backupInvalid();
+      for(const document of w.attachments){keys(document,['id','name','data','createdAt']);text(document.id,'Mã tài liệu',1,200);privateDocument(document);timestamp(document.createdAt);}
+      if(new Set(w.attachments.map(document=>document.id)).size!==w.attachments.length)throw backupInvalid();
+      keys(w.profile,['name','industry','stage','location','summary','target','fundingRoundIndex','fundingRoundTotal','raised','traction','customerReferences','market','team','teamRoster','useOfFunds','media']);w.profile=normalizeProfile(w.profile);
       if(w.diligence===undefined)w.diligence={};
       keys(w.diligence,[...DEEP_DILIGENCE_KEYS]);
       for(const value of Object.values(w.diligence))text(value,'Nội dung thẩm định',0,5000);
@@ -231,7 +267,7 @@ function validatedState(value) {
       if(r.requestId!==null)text(r.requestId,'Mã yêu cầu',1,1000);
     }
     for(const m of state.aiChats) {
-      keys(m,['id','authorId','workspaceId','sessionId','question','text','tokenUsage','model','provider','requestId','createdAt']);actorId(m.authorId);optionalWorkspace(m.workspaceId,m.authorId);if(m.sessionId!==undefined)text(m.sessionId,'Phiên chat',1,100);if(m.question!==undefined)text(m.question,'Câu hỏi',1,4000);text(m.text,'Phản hồi AI',1,16000);timestamp(m.createdAt);for(const field of ['model','provider'])text(m[field],field,1,150);
+      keys(m,['id','authorId','workspaceId','sessionId','question','text','tokenUsage','model','provider','requestId','createdAt']);actorId(m.authorId);optionalWorkspace(m.workspaceId,m.authorId);if(m.sessionId!==undefined)text(m.sessionId,'Phiên chat',1,100);else delete m.sessionId;if(m.question!==undefined)text(m.question,'Câu hỏi',1,4000);else delete m.question;text(m.text,'Phản hồi AI',1,16000);timestamp(m.createdAt);for(const field of ['model','provider'])text(m[field],field,1,150);
       keys(m.tokenUsage,['inputTokens','outputTokens','totalTokens','estimated']);actualUsage(m.tokenUsage);if(m.tokenUsage.estimated!==false)throw backupInvalid();if(m.requestId!==null)text(m.requestId,'Mã yêu cầu',1,1000);
     }
     const charged={},linkedReports=new Set(),linkedChats=new Set();
@@ -370,7 +406,7 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
     return structuredClone({
       revision: data.revision, user: actor, plan: plan(data,userId), usage: usage(data,userId),
       workspaceDraft: actor.role==='founder' ? data.workspaceDraft : null,
-      workspaces: accessible.map(w => ({ ...w, isOwner: w.ownerId === userId, canManage: w.ownerId === userId })),
+      workspaces: accessible.map(w => ({ ...w, attachments:(w.attachments||[]).map(({id,name,createdAt})=>({id,name,createdAt})), isOwner: w.ownerId === userId, canManage: w.ownerId === userId })),
       marketplace: data.workspaces.filter(w => w.published).map(publicProject),
       publicCases: createInvestorCaseListings(data.workspaces),
       cases: data.cases.filter(item=>item.ownerId===userId),
@@ -403,6 +439,21 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
         const profile = action.profile ? normalizeProfile(action.profile) : { name, industry:'Chưa công bố', stage:'Pre-seed', location:'Việt Nam', summary:goal.padEnd(10,'.'), target:1 };
         next.workspaces.push({ id:id('workspace'), ownerId:userId, name, goal, profile, published:false, publishedAt:null, financial:null, diligence:{}, createdAt:stamp, updatedAt:stamp });
         next.workspaceDraft=null;
+        break;
+      }
+      case 'add-attachment': {
+        const project=owned(next,userId,action.workspaceId);
+        project.attachments ||= [];
+        if(project.attachments.length>=3)throw error(409,'LIMIT','Tối đa 3 tài liệu riêng cho mỗi workspace.');
+        const document=privateDocument(action);
+        project.attachments.push({id:id('document'),...document,createdAt:stamp});project.updatedAt=stamp;
+        break;
+      }
+      case 'remove-attachment': {
+        const project=owned(next,userId,action.workspaceId);
+        const index=(project.attachments||[]).findIndex(document=>document.id===action.documentId);
+        if(index<0)throw error(404,'NOT_FOUND','Không tìm thấy tài liệu.');
+        project.attachments.splice(index,1);project.updatedAt=stamp;
         break;
       }
       case 'create-case': {
@@ -557,6 +608,12 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
     if(!project.financial) throw error(404,'NOT_FOUND','Startup chưa tải báo cáo tài chính.');
     return structuredClone(project.financial);
   }
+  function getAttachment(userId, workspaceId, documentId) {
+    const project=readable(data,userId,workspaceId);
+    const document=(project.attachments||[]).find(item=>item.id===documentId);
+    if(!document)throw error(404,'NOT_FOUND','Không tìm thấy tài liệu.');
+    return {name:document.name,data:document.data};
+  }
   function beginAnalysis(userId, options = {}) {
     user(userId);const next=structuredClone(data);
     let csv=options.csv,name=options.name||'Phân tích tài chính';
@@ -631,5 +688,5 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
     const current=bucket(next,userId,pending.bucketKey);current.aiTokens=Math.max(0,current.aiTokens-pending.reservedTokens+charged);
     pending.status='failed';pending.actualTokens=charged;pending.finishedAt=now().toISOString();persist(next);return snapshot(userId);
   }
-  return { snapshot, act, settleConnectionPayment, getFinancial, beginAnalysis, finishAnalysis, beginChat, finishChat, failAnalysis, exportData, restoreData };
+  return { snapshot, act, settleConnectionPayment, getFinancial, getAttachment, beginAnalysis, finishAnalysis, beginChat, finishChat, failAnalysis, exportData, restoreData };
 }

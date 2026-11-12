@@ -117,6 +117,34 @@ test('Startup edits public Leader and Co-leader; Investor expands key members',a
   await page.getByRole('button',{name:'Xem thêm 1 thành viên chủ chốt'}).click();
   await expect(page.getByText('Thảo Vy',{exact:true})).toBeVisible();
 });
+test('Startup uploads its own public images and private PDF; Investor sees only published media',async({page,workflow})=>{
+  const workspaceId=create(workflow.store);
+  await page.goto('/#/workspace/'+workspaceId);
+  await picker(page).selectOption('startup-demo');
+  await page.getByRole('button',{name:'Sửa giới thiệu'}).click();
+  const png=Buffer.from((await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=4;canvas.height=4;canvas.getContext('2d').fillRect(0,0,4,4);return canvas.toDataURL('image/png');})).split(',')[1],'base64');
+  for(const name of ['cover','logo','productImage'])await page.locator(`input[name="${name}"]`).setInputFiles({name:`${name}.png`,mimeType:'image/png',buffer:png});
+  await page.locator('input[name="productDemoUrl"]').fill('https://example.com/product');
+  await page.locator('details').filter({hasText:'Người phụ trách công khai'}).locator('summary').click();
+  await page.locator('input[name="leaderName"]').fill('Nguyễn Minh');
+  await page.locator('input[name="leaderPhoto"]').setInputFiles({name:'leader.png',mimeType:'image/png',buffer:png});
+  await page.locator('input[name="leaderPhotoConsent"]').check();
+  await page.getByRole('button',{name:'Lưu và công bố'}).click();
+  await expect.poll(()=>workflow.store.snapshot('investor').marketplace[0]?.profile.media?.cover?.startsWith('data:image/webp;base64,')).toBe(true);
+  await page.getByRole('tab',{name:'Tài liệu riêng'}).click();
+  await page.locator('input[type="file"][accept=".pdf,application/pdf"]').setInputFiles({name:'pitch.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4\nPrivate pitch')});
+  await page.getByRole('button',{name:'Lưu tài liệu'}).click();
+  await expect(page.getByText('pitch.pdf')).toBeVisible();
+  await picker(page).selectOption('investor-demo');
+  await page.goto('/#/startup/'+workspaceId);
+  await expect(page.getByRole('img',{name:'Ảnh bìa Lotus Public'})).toBeVisible();
+  await expect(page.getByRole('img',{name:'Logo Lotus Public'})).toBeVisible();
+  await expect(page.getByRole('img',{name:'Hình ảnh sản phẩm Lotus Public'})).toBeVisible();
+  await expect(page.getByRole('link',{name:'Xem sản phẩm hoặc video giới thiệu'})).toHaveAttribute('href','https://example.com/product');
+  await expect(page.getByRole('img',{name:'Xem trước: Ảnh Leader'})).toHaveCount(0);
+  expect(workflow.store.snapshot('investor').workspaces).toHaveLength(0);
+  expect(JSON.stringify(workflow.store.snapshot('investor')).includes('Private pitch')).toBe(false);
+});
 test('full two-party lifecycle: publish, approve, settle fees, exchange, invest, revoke',async({page,browser,workflow})=>{
   await page.goto('/#/workspace');await picker(page).selectOption('startup-demo');await page.getByRole('button',{name:'Tạo workspace',exact:true}).click();
   await page.getByLabel('Tên workspace',{exact:true}).fill('Vòng Seed');await page.getByLabel('Mục tiêu dự án').fill('Hoàn thiện hồ sơ gọi vốn');await page.getByLabel('Tên startup',{exact:true}).fill(profile.name);await page.getByLabel('Địa điểm',{exact:true}).fill(profile.location);await page.getByLabel('Giới thiệu công khai',{exact:true}).fill(profile.summary);await page.getByLabel('Mục tiêu vòng gọi vốn (triệu ₫)').fill('8000');await page.locator('form').getByRole('button',{name:'Tạo workspace',exact:true}).click();
