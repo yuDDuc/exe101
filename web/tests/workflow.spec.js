@@ -33,7 +33,7 @@ test('logo appears at viewport center once, then settles into the existing sideb
   await page.goto('/#/analysis');
   await expect(entrance).toHaveCount(0);
 });
-test('logo entrance uses the dark theme background without changing the dashboard',async({page})=>{
+test('logo entrance uses the dark theme background without changing the page',async({page})=>{
   await page.addInitScript(()=>localStorage.setItem('2g2bt-theme','dark'));
   await page.goto('/#/home',{waitUntil:'commit'});
   const entrance=page.locator('[data-logo-entrance="active"]');
@@ -41,6 +41,22 @@ test('logo entrance uses the dark theme background without changing the dashboar
   await expect(entrance.locator('[data-logo-entrance-backdrop]')).toHaveCSS('background-color','rgb(17, 24, 39)');
   await expect(entrance).toHaveCount(0,{timeout:5000});
   await expect(page.locator('.brand-logo').first()).toBeVisible();
+});
+test('Investor Home resolves to AI Chat while Dashboard keeps its own route',async({page})=>{
+  await page.goto('/#/home');
+  await expect(page).toHaveURL(/#\/conversations$/);
+  await expect(page.getByRole('heading',{name:'Mình có thể giúp gì cho bạn?'})).toBeVisible();
+  const dashboard=page.getByRole('complementary',{name:'Điều hướng Nhà đầu tư'}).getByRole('link',{name:'Dashboard đầu tư'});
+  await expect(dashboard).toHaveAttribute('href','#/dashboard');
+  await dashboard.click();
+  await expect(page).toHaveURL(/#\/dashboard$/);
+  await expect(page.getByRole('heading',{name:'Danh mục của bạn, trong một góc nhìn.'})).toBeVisible();
+  await page.getByRole('complementary',{name:'Điều hướng Nhà đầu tư'}).getByRole('link',{name:'2GOOD2BETRUE · AI Chat'}).click();
+  await expect(page).toHaveURL(/#\/conversations$/);
+  await page.getByLabel('Chọn vai trò').selectOption('startup-demo');
+  await page.goto('/#/home');
+  await expect(page).toHaveURL(/#\/home$/);
+  await expect(page.getByRole('heading',{name:'Không gian làm việc cho startup và nhà đầu tư.'})).toBeVisible();
 });
 test('server Case route, Startup management and case pricing open their intended pages',async({page,workflow})=>{
   const id=create(workflow.store);

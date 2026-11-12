@@ -75,8 +75,12 @@ function loadState() {
 function routeFromHash(defaultPage = 'home') {
   const raw = (window.location.hash.replace(/^#\/?/, '') || defaultPage).split('?')[0].split('/');
   const id = raw.slice(1).join('/');
-  if (raw[0] === 'dashboard') { window.history.replaceState(null, '', '#/home'); return { page: 'home', id: '' }; }
+  if (raw[0] === 'dashboard') {
+    if (defaultPage === 'conversations') return { page: 'dashboard', id: '' };
+    window.history.replaceState(null, '', '#/home'); return { page: 'home', id: '' };
+  }
   if (raw[0] === 'home' && id) { window.history.replaceState(null, '', `#/conversations/${id}`); return { page: 'conversations', id }; }
+  if (raw[0] === 'home' && defaultPage === 'conversations') { window.history.replaceState(null, '', '#/conversations'); return { page: 'conversations', id: '' }; }
   const query = new URLSearchParams(window.location.hash.split('?')[1] || '');
   return { page: raw[0], id, startupId: query.get('startupId') || '' };
 }
@@ -91,7 +95,7 @@ function Sidebar({ state, route, mobileOpen, setMobileOpen, onOpenAgent, account
 }
 
 function Topbar({ state, route, setMobileOpen, accountId, switchAccount }) {
-  const investorTitles = { conversations: 'AI Chat', home: 'Dashboard đầu tư', marketplace: 'Startup & Cơ hội đầu tư', workspace: 'Workspace (Investor)', cases: 'Xếp hạng', portfolio: 'Quản lý danh mục', 'due-diligence': 'Thẩm định', collaboration: 'Hợp tác & Giao dịch', documents: 'Tài liệu & Báo cáo', support: 'Trợ giúp & Hỗ trợ' };
+  const investorTitles = { conversations: 'AI Chat', dashboard: 'Dashboard đầu tư', marketplace: 'Startup & Cơ hội đầu tư', workspace: 'Workspace (Investor)', cases: 'Xếp hạng', portfolio: 'Quản lý danh mục', 'due-diligence': 'Thẩm định', collaboration: 'Hợp tác & Giao dịch', documents: 'Tài liệu & Báo cáo', support: 'Trợ giúp & Hỗ trợ' };
   const title = (state.role === 'investor' && investorTitles[route.page]) || (route.page === 'marketplace' && state.role === 'founder' ? 'Quản lý startup' : navItems.find(x => x.id === route.page)?.label) || ({ pricing: state.role === 'founder' ? 'Phí theo case' : 'Gói dịch vụ', privacy: 'Dữ liệu & quyền riêng tư', startup: 'Hồ sơ startup' }[route.page] || 'Tổng quan');
   return <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-5 backdrop-blur lg:px-9"><div className="flex min-w-0 items-center gap-3"><button className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-slate-200 text-slate-600 lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Mở menu"><Icon name="menu" size={17} /></button><div className="hidden items-center gap-2 text-xs text-slate-400 sm:flex"><span>Workspace</span><span>/</span><span className="font-semibold text-slate-700">{title}</span></div><span className="truncate font-semibold text-slate-800 sm:hidden max-[360px]:hidden">{title}</span></div><div className="flex shrink-0 items-center gap-2.5"><select className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-600 outline-none max-w-[145px] sm:max-w-[200px]" value={accountId} onChange={e => switchAccount(e.target.value)} aria-label="Chọn vai trò">{DEMO_ACCOUNTS.map(account => <option key={account.id} value={account.id}>{account.name}</option>)}</select><button className="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 max-[420px]:hidden" onClick={() => navigate('privacy')} aria-label="Cài đặt"><Icon name="settings" size={16} /></button><ThemeToggle/></div></header>;
 }
@@ -182,6 +186,7 @@ export function DemoApp() {
     saveAccount(accountId, stateRef.current);
     const next = loadAccount(nextId);
     setActiveAccountId(nextId); setAccountId(nextId); commit(next);
+    setRoute(routeFromHash(next.role === 'investor' ? 'conversations' : 'home'));
     setMobileOpen(false); setLimit(null); setAgentOpen(false);
     if (!location.hash || location.hash === '#/') navigate(next.role === 'investor' ? 'conversations' : 'home');
     setNotice('Đã chuyển sang ' + DEMO_ACCOUNTS.find(item => item.id === nextId).name + '.');
@@ -217,7 +222,8 @@ export function DemoApp() {
   const isChat=route.page==='conversations';
   const isInvestorAIChat=isChat&&state.role==='investor'&&!route.id;
   let page;
-  if(route.page==='home')page=homePage;
+  if(route.page==='dashboard'&&state.role==='investor')page=<InvestorDashboard state={state}/>;
+  else if(route.page==='home')page=homePage;
   else if(isInvestorAIChat)page=<DemoInvestorAIChat state={state} onOpenMenu={()=>setMobileOpen(true)} accountId={accountId} onSwitchAccount={switchAccount}/>;
   else if(isChat)page=<ConversationsPage state={state} id={route.id} onOpenAgent={()=>setAgentOpen(true)}/>;
   else if(route.page==='pricing')page=state.role==='founder'&&route.id!=='legacy'?<CasePricingPage/>:<PricingPage {...props}/>;

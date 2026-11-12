@@ -49,16 +49,17 @@ test('light is the default and the theme choice persists across pages and roles'
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('Investor dashboard uses stored portfolio data and preserves legacy dashboard route', async ({ page }) => {
-  await page.goto('/#/home');
+test('Investor dashboard keeps its own route while Home opens AI Chat', async ({ page }) => {
+  await page.goto('/#/dashboard');
   await expect(page.getByRole('heading', { name: 'Danh mục của bạn, trong một góc nhìn.' })).toBeVisible();
   await expect(page.getByText('500 triệu ₫', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('550 triệu ₫', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Chưa ghi nhận', { exact: true })).toBeVisible();
   await expect(investorSidebar(page).getByRole('link', { name: 'Dashboard đầu tư' })).toHaveAttribute('aria-current', 'page');
-  await page.goto('/#/dashboard');
-  await expect(page).toHaveURL(/#\/home$/);
-  await expect(page.getByRole('heading', { name: 'Danh mục của bạn, trong một góc nhìn.' })).toBeVisible();
+  await expect(page).toHaveURL(/#\/dashboard$/);
+  await page.goto('/#/home');
+  await expect(page).toHaveURL(/#\/conversations$/);
+  await expect(page.getByRole('heading', { name: 'Mình có thể giúp gì cho bạn?' })).toBeVisible();
 });
 
 test('the investor logo opens AI Chat and the Startup logo opens its home page', async ({ page }) => {

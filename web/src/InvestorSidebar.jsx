@@ -67,7 +67,7 @@ export function InvestorSidebar({ route, mobileOpen, setMobileOpen, collapsed, s
       <nav aria-label="Điều hướng chính" className="investor-primary-nav">
         <p className="investor-nav-heading">KHÔNG GIAN LÀM VIỆC</p>
         <NavLink href="#/conversations" label="AI Chat" icon={MessageSquare} active={route.page === 'conversations'} collapsed={collapsed} onNavigate={closeMobile} />
-        <NavLink href="#/home" label="Dashboard đầu tư" icon={LayoutDashboard} active={route.page === 'home'} collapsed={collapsed} onNavigate={closeMobile} />
+        <NavLink href="#/dashboard" label="Dashboard đầu tư" icon={LayoutDashboard} active={route.page === 'dashboard'} collapsed={collapsed} onNavigate={closeMobile} />
         <NavLink href="#/analysis" label="Phân tích tài chính" icon={ChartNoAxesColumnIncreasing} active={route.page === 'analysis'} collapsed={collapsed} onNavigate={closeMobile} />
         <NavLink href="#/marketplace" label="Startup & Cơ hội đầu tư" icon={Rocket} active={route.page === 'marketplace' || route.page === 'startup'} collapsed={collapsed} onNavigate={closeMobile} />
         {showCases && <NavLink href="#/cases" label="Xếp hạng" icon={BriefcaseBusiness} active={route.page === 'cases'} collapsed={collapsed} onNavigate={closeMobile} />}
