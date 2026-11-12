@@ -8,6 +8,11 @@ test('logo appears at viewport center once, then settles into the existing sideb
   await page.goto('/#/home',{waitUntil:'commit'});
   const entrance=page.locator('[data-logo-entrance="active"]');
   await expect(entrance).toBeVisible();
+  const backdrop=entrance.locator('[data-logo-entrance-backdrop]');
+  await expect(backdrop).toHaveCSS('background-color','rgb(243, 244, 246)');
+  await expect(backdrop).toHaveCSS('opacity','1');
+  const bounds=await backdrop.boundingBox();
+  expect(bounds).toMatchObject({x:0,y:0,width:1440,height:1000});
   const center=await entrance.locator('svg').evaluate(node=>{const r=node.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2,w:innerWidth,h:innerHeight};});
   expect(Math.abs(center.x-center.w/2)).toBeLessThan(2);
   expect(Math.abs(center.y-center.h/2)).toBeLessThan(2);
@@ -20,6 +25,15 @@ test('logo appears at viewport center once, then settles into the existing sideb
   await expect(entrance).toHaveCount(0);
   await page.goto('/#/analysis');
   await expect(entrance).toHaveCount(0);
+});
+test('logo entrance uses the dark theme background without changing the dashboard',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('2g2bt-theme','dark'));
+  await page.goto('/#/home',{waitUntil:'commit'});
+  const entrance=page.locator('[data-logo-entrance="active"]');
+  await expect(entrance).toBeVisible();
+  await expect(entrance.locator('[data-logo-entrance-backdrop]')).toHaveCSS('background-color','rgb(17, 24, 39)');
+  await expect(entrance).toHaveCount(0,{timeout:5000});
+  await expect(page.locator('.brand-logo').first()).toBeVisible();
 });
 test('server Case route, Startup management and case pricing open their intended pages',async({page,workflow})=>{
   const id=create(workflow.store);

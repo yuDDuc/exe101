@@ -48,6 +48,11 @@ export function LogoEntrance() {
     layer.dataset.logoEntrance = 'active';
     Object.assign(layer.style, { position: 'fixed', inset: '0', zIndex: '50', pointerEvents: 'none', overflow: 'visible' });
     layer.setAttribute('aria-hidden', 'true');
+    const backdrop = document.createElement('div');
+    backdrop.dataset.logoEntranceBackdrop = '';
+    Object.assign(backdrop.style, {
+      position: 'absolute', inset: '0', background: 'var(--app-background)', opacity: '1',
+    });
 
     const flying = document.createElement('div');
     Object.assign(flying.style, {
@@ -82,7 +87,7 @@ export function LogoEntrance() {
       fontWeight: '600', letterSpacing: '.18em', opacity: '0',
     });
     flying.append(label);
-    layer.append(flying);
+    layer.append(backdrop, flying);
     const previousVisibility = logo.style.visibility;
     logo.style.visibility = 'hidden';
     document.body.append(layer);
@@ -119,10 +124,13 @@ export function LogoEntrance() {
       const end = logo.getBoundingClientRect();
       const endWidth = fullLogo ? end.width * 26 / 220 : end.width;
       const endX = fullLogo ? end.left + endWidth / 2 : end.left + end.width / 2;
-      await animate(flying, [
-        { transform: 'translate3d(0,0,0) scale(1)', opacity: 1 },
-        { transform: `translate3d(${endX - centerX}px, ${end.top + end.height / 2 - centerY}px, 0) scale(${endWidth / startWidth})`, opacity: 1 },
-      ], { duration: 820, easing: 'cubic-bezier(.16,1,.3,1)' });
+      await Promise.all([
+        animate(flying, [
+          { transform: 'translate3d(0,0,0) scale(1)', opacity: 1 },
+          { transform: `translate3d(${endX - centerX}px, ${end.top + end.height / 2 - centerY}px, 0) scale(${endWidth / startWidth})`, opacity: 1 },
+        ], { duration: 820, easing: 'cubic-bezier(.16,1,.3,1)' }),
+        animate(backdrop, [{ opacity: 1 }, { opacity: 0 }], { duration: 820, easing: 'cubic-bezier(.16,1,.3,1)' }),
+      ]);
       if (!stopped) finish();
     })().catch(finish);
 
