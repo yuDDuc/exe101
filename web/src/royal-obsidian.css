@@ -37,7 +37,6 @@
 :root[data-theme] .startup-cover-action { background: var(--color-pearl); color: var(--color-obsidian); box-shadow: 0 2px 10px var(--shadow-color); }
 :root[data-theme] .startup-cover-action:hover:not(:disabled) { background: var(--color-lavender); }
 :root[data-theme] .startup-cover-action:disabled { opacity: .6; cursor: not-allowed; }
-:root[data-theme] .startup-cover-mark { background: var(--color-pearl); color: var(--color-royal); border: 1px solid var(--color-lavender); box-shadow: 0 3px 12px var(--shadow-color); }
 
 /* Surfaces, cards, forms, tables and loading placeholders. */
 :root[data-theme] .bg-white,

@@ -8,11 +8,14 @@ test('server Case route, Startup management and case pricing open their intended
   await page.goto('/#/cases');
   await expect(page.getByRole('heading',{name:'Xếp hạng',exact:true})).toBeVisible();
   await expect(page.getByRole('link',{name:'Xếp hạng',exact:true})).toBeVisible();
+  await page.goto('/#/marketplace');
+  await page.getByRole('link',{name:'Lotus Public',exact:true}).click();
+  await expect(page).toHaveURL(new RegExp(`#/startup/${id}$`));
   await picker(page).selectOption('startup-demo');
   await page.goto('/#/marketplace');
   await expect(page.getByRole('heading',{name:'Quản lý startup',exact:true})).toBeVisible();
   await expect(page.getByText('Gửi yêu cầu để Startup cấp quyền xem hồ sơ tài chính.')).toHaveCount(0);
-  await page.getByRole('link',{name:'Quản lý hồ sơ →'}).click();
+  await page.getByRole('link',{name:'Lotus Public',exact:true}).click();
   await expect(page).toHaveURL(new RegExp(`#/workspace/${id}$`));
   await page.goto('/#/pricing');
   await expect(page.getByRole('heading',{name:'Startup trả theo case',exact:true})).toBeVisible();

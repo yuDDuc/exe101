@@ -35,13 +35,12 @@ function coverFor(project) {
 }
 
 export function StartupCover({ project, trailing }) {
-  return <div className="startup-cover relative -mx-5 -mt-5 mb-7 h-36 overflow-hidden rounded-t-2xl sm:-mx-6 sm:-mt-6">
+  return <div className="startup-cover relative -mx-5 -mt-5 mb-5 h-36 overflow-hidden rounded-t-2xl sm:-mx-6 sm:-mt-6">
     <img src={coverFor(project)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
     <div className="startup-cover-shade pointer-events-none absolute inset-0" aria-hidden="true" />
     <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
       <span className="startup-cover-pill rounded-full px-2.5 py-1 text-xs font-semibold">{project.profile.stage}</span>
       {trailing}
     </div>
-    <span className="startup-cover-mark absolute bottom-3 left-4 z-10 grid h-11 w-11 place-items-center rounded-xl text-lg font-bold" aria-hidden="true">{project.profile.name[0]}</span>
   </div>;
 }
