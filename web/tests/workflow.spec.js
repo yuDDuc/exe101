@@ -4,6 +4,12 @@ import {SAMPLE_CSV} from '../domain.js';
 const picker=page=>page.getByLabel('Chọn vai trò');
 const profile={name:'Lotus Public',industry:'Fintech',stage:'Seed',location:'TP.HCM',summary:'Nền tảng thanh toán giúp doanh nghiệp nhỏ quản lý dòng tiền.',target:8000};
 function create(store){let s=store.act('founder',{type:'create-workspace',name:'Vòng Seed',goal:'Hoàn thiện hồ sơ gọi vốn',profile});const w=s.workspaces[0];store.act('founder',{type:'publish',workspaceId:w.id});store.act('founder',{type:'upload-financial',workspaceId:w.id,csv:SAMPLE_CSV,name:'private.csv'});return w.id;}
+test('solid theme color covers the first paint before the app script loads',async({page})=>{
+  await page.route('**/src/main.jsx*',route=>route.abort());
+  await page.goto('/#/home',{waitUntil:'domcontentloaded'});
+  expect(await page.evaluate(()=>document.documentElement.classList.contains('logo-entrance-pending'))).toBe(true);
+  expect(await page.evaluate(()=>getComputedStyle(document.documentElement,'::before').backgroundColor)).toBe('rgb(243, 244, 246)');
+});
 test('logo appears at viewport center once, then settles into the existing sidebar slot',async({page})=>{
   await page.goto('/#/home',{waitUntil:'commit'});
   const entrance=page.locator('[data-logo-entrance="active"]');
@@ -19,6 +25,7 @@ test('logo appears at viewport center once, then settles into the existing sideb
   await expect(entrance.getByText('2 GOOD 2 BE TRUE')).toBeVisible();
   await expect.poll(()=>entrance.getByText('2 GOOD 2 BE TRUE').evaluate(node=>Number(getComputedStyle(node).opacity))).toBeGreaterThan(.9);
   await expect(entrance).toHaveCount(0,{timeout:5000});
+  expect(await page.evaluate(()=>document.documentElement.classList.contains('logo-entrance-pending'))).toBe(false);
   await expect(page.locator('.brand-logo').first()).toBeVisible();
   expect(await page.evaluate(()=>sessionStorage.getItem('2g2bt-logo-entrance-seen'))).toBe('1');
   await page.reload();

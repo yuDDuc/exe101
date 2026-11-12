@@ -23,8 +23,9 @@ export function LogoEntrance() {
   }, []);
   useLayoutEffect(() => {
     if (!ready) return;
-    try { if (playedInMemory || sessionStorage.getItem(SESSION_KEY) === '1') return; }
-    catch { if (playedInMemory) return; }
+    const releasePreflight = () => document.documentElement.classList.remove('logo-entrance-pending');
+    try { if (playedInMemory || sessionStorage.getItem(SESSION_KEY) === '1') { releasePreflight(); return; } }
+    catch { if (playedInMemory) { releasePreflight(); return; } }
 
     const logo = sidebarLogo();
     if (!logo) return;
@@ -34,6 +35,7 @@ export function LogoEntrance() {
     };
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !logo.animate) {
       remember();
+      releasePreflight();
       return;
     }
 
@@ -91,6 +93,7 @@ export function LogoEntrance() {
     const previousVisibility = logo.style.visibility;
     logo.style.visibility = 'hidden';
     document.body.append(layer);
+    releasePreflight();
 
     let stopped = false;
     const animations = [];
@@ -104,6 +107,7 @@ export function LogoEntrance() {
     const finish = () => {
       logo.style.visibility = previousVisibility;
       layer.remove();
+      releasePreflight();
       if (!stopped) remember();
     };
 
@@ -140,6 +144,7 @@ export function LogoEntrance() {
       animations.forEach(animation => animation.cancel());
       logo.style.visibility = previousVisibility;
       layer.remove();
+      releasePreflight();
     };
   }, [ready]);
   return null;
