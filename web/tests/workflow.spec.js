@@ -6,8 +6,8 @@ function create(store){let s=store.act('founder',{type:'create-workspace',name:'
 test('server Case route, Startup management and case pricing open their intended pages',async({page,workflow})=>{
   const id=create(workflow.store);
   await page.goto('/#/cases');
-  await expect(page.getByRole('heading',{name:'Case đang tìm nhà đầu tư',exact:true})).toBeVisible();
-  await expect(page.getByRole('link',{name:'Case & kết nối',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Xếp hạng',exact:true})).toBeVisible();
+  await expect(page.getByRole('link',{name:'Xếp hạng',exact:true})).toBeVisible();
   await picker(page).selectOption('startup-demo');
   await page.goto('/#/marketplace');
   await expect(page.getByRole('heading',{name:'Quản lý startup',exact:true})).toBeVisible();

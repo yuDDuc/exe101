@@ -30,6 +30,15 @@
 :root[data-theme] :where(*):not(html) { scrollbar-color: var(--border) var(--app-background); }
 :root[data-theme] .skip-link { background: var(--color-royal); color: var(--color-pearl); }
 
+/* Marketplace covers stay decorative; text and controls use opaque surfaces. */
+:root[data-theme] .startup-cover { background: var(--surface-accent); }
+:root[data-theme] .startup-cover-shade { background: linear-gradient(180deg, transparent 43%, color-mix(in srgb, var(--color-obsidian) 58%, transparent)); }
+:root[data-theme] .startup-cover-pill,
+:root[data-theme] .startup-cover-action { background: var(--color-pearl); color: var(--color-obsidian); box-shadow: 0 2px 10px var(--shadow-color); }
+:root[data-theme] .startup-cover-action:hover:not(:disabled) { background: var(--color-lavender); }
+:root[data-theme] .startup-cover-action:disabled { opacity: .6; cursor: not-allowed; }
+:root[data-theme] .startup-cover-mark { background: var(--color-pearl); color: var(--color-royal); border: 1px solid var(--color-lavender); box-shadow: 0 3px 12px var(--shadow-color); }
+
 /* Surfaces, cards, forms, tables and loading placeholders. */
 :root[data-theme] .bg-white,
 :root[data-theme] [class~="bg-white/90"],
