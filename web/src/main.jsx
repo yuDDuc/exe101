@@ -14,6 +14,7 @@ import { ThemeToggle } from './ThemeToggle.jsx';
 import { ConversationsPage } from './ConversationsPage.jsx';
 import { LiveInvestorAIChat } from './InvestorAIChat.jsx';
 import { AIAgent } from './AIAgent.jsx';
+import { LogoEntrance } from './LogoEntrance.jsx';
 import { WorkflowProvider, InvestmentFlow, useWorkflow, workspaceGoalText } from './InvestmentFlow.jsx';
 import { StartupManagement } from './StartupManagement.jsx';
 import { DEMO_ACCOUNTS, getActiveAccountId, loadAccount, saveAccount, setActiveAccountId } from './demoAccounts.js';
@@ -215,5 +216,5 @@ function ServerApp(){
   return <WorkflowProvider role={state.role}><ServerShell account={account} accountId={accountId} switchAccount={switchAccount} state={state} updateRole={updateRole}/></WorkflowProvider>;
 }
 // Keep the independent server workflow available while the prototype uses its demo accounts.
-function App(){return new URLSearchParams(window.location.search).get('mode')==='demo'?<DemoApp/>:<ServerApp/>;}
+function App(){return <>{new URLSearchParams(window.location.search).get('mode')==='demo'?<DemoApp/>:<ServerApp/>}<LogoEntrance/></>;}
 createRoot(document.getElementById('app')).render(<App />);
