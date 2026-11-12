@@ -27,7 +27,7 @@ export function LimitDialog({ state, limit, onClose }) {
   const { feature, quota, required } = limit;
   return <Dialog title={feature === 'export' ? 'Mở tính năng xuất báo cáo' : 'Bạn đã chạm hạn mức'} onClose={onClose}><p className="text-sm leading-6 text-slate-600">{getPlan(state).name} {quota.limit === 0 ? 'chưa có quyền' : 'giới hạn'} {featureNames[feature] || feature}.</p>
     {feature !== 'export' && <div className="my-5 rounded-2xl bg-indigo-50 p-4"><p className="text-2xl font-bold text-indigo-900">{money(quota.used)} / {money(quota.limit)}</p><p className="mt-1 text-sm text-indigo-700">{featureNames[feature]}</p>{required && <p className="mt-2 text-sm text-indigo-700">Lần này cần {money(required)} token; còn {money(quota.remaining)}.</p>}</div>}
-    {['aiTokens','connections'].includes(feature) && <p className="my-4 text-sm leading-6 text-slate-600">{resetLabel(quota)}. {quota.period === 'lifetime' ? 'Nâng cấp để có ngân sách mỗi tuần.' : 'Ngân sách dư không cộng dồn.'}</p>}
+    {['aiTokens','connections'].includes(feature) && <p className="my-4 text-sm leading-6 text-slate-600">{resetLabel(quota)}. {quota.period === 'lifetime' ? state.role === 'investor' ? 'Nâng cấp để có ngân sách mỗi tháng.' : 'Nâng cấp để có ngân sách mỗi tuần.' : 'Ngân sách dư không cộng dồn.'}</p>}
     <p className="my-4 text-xs leading-5 text-slate-500">Dữ liệu hiện có được giữ lại. Đổi gói không đặt lại số đã dùng trong cùng kỳ.</p><div className="flex gap-3"><button className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm" onClick={onClose}>Đóng</button><a className={actionClass} href="#/pricing" onClick={onClose}>Xem gói phù hợp</a></div>
   </Dialog>;
 }

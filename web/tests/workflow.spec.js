@@ -1,4 +1,5 @@
 import {test,expect} from './fixtures/workflow.js';
+import {readFileSync} from 'node:fs';
 import {SAMPLE_CSV} from '../domain.js';
 const picker=page=>page.getByLabel('Chọn vai trò');
 const profile={name:'Lotus Public',industry:'Fintech',stage:'Seed',location:'TP.HCM',summary:'Nền tảng thanh toán giúp doanh nghiệp nhỏ quản lý dòng tiền.',target:8000};
@@ -18,11 +19,13 @@ test('server Case route, Startup management and case pricing open their intended
   await page.getByRole('link',{name:'Lotus Public',exact:true}).click();
   await expect(page).toHaveURL(new RegExp(`#/workspace/${id}$`));
   await page.goto('/#/pricing');
-  await expect(page.getByRole('heading',{name:'Startup trả theo case',exact:true})).toBeVisible();
-  await page.getByRole('link',{name:'Đi tới case'}).click();
+  await expect(page.getByRole('heading',{name:'Startup trả theo hồ sơ',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:/899\.000đ/})).toBeVisible();
+  await expect(page.getByRole('heading',{name:/200\.000đ/})).toBeVisible();
+  await page.getByRole('link',{name:'Chuẩn bị hồ sơ'}).click();
   await expect(page.getByRole('heading',{name:'Case gọi vốn của Startup',exact:true})).toBeVisible();
 });
-test('Startup case draft stays on the server and cannot appear to Investor while fee and mentor wait',async({page,workflow})=>{
+test('Startup case draft stays on the server and cannot appear to Investor while payment is unavailable',async({page,workflow})=>{
   const workspaceId=create(workflow.store);
   await page.goto('/#/cases');
   await picker(page).selectOption('startup-demo');
@@ -34,11 +37,11 @@ test('Startup case draft stays on the server and cannot appear to Investor while
   await expect(page.getByText('Bản nháp',{exact:true}).first()).toBeVisible();
   const caseId=workflow.store.snapshot('founder').cases[0].id;
   await page.getByRole('button',{name:'Gửi vào quy trình'}).click();
-  await expect(page.getByRole('heading',{name:'Đang chờ cấu hình phí đăng'})).toBeVisible();
-  expect(workflow.store.snapshot('founder').cases[0].stage).toBe('awaiting_fee_configuration');
+  await expect(page.getByRole('heading',{name:'Đang chờ mở thanh toán'})).toBeVisible();
+  expect(workflow.store.snapshot('founder').cases[0].stage).toBe('awaiting_payment');
   expect(workflow.store.snapshot('investor').cases).toHaveLength(0);
   await page.reload();
-  await expect(page.getByRole('heading',{name:'Đang chờ cấu hình phí đăng'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Đang chờ mở thanh toán'})).toBeVisible();
   await page.setViewportSize({width:390,height:844});
   await page.getByRole('button',{name:'Bật chế độ tối'}).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
@@ -117,7 +120,7 @@ test('Startup edits public Leader and Co-leader; Investor expands key members',a
   await page.getByRole('button',{name:'Xem thêm 1 thành viên chủ chốt'}).click();
   await expect(page.getByText('Thảo Vy',{exact:true})).toBeVisible();
 });
-test('Startup uploads its own public images and private PDF; Investor sees only published media',async({page,workflow})=>{
+test('Startup uploads public images and private PDF/Excel; Investor sees only published media',async({page,workflow})=>{
   const workspaceId=create(workflow.store);
   await page.goto('/#/workspace/'+workspaceId);
   await picker(page).selectOption('startup-demo');
@@ -131,10 +134,14 @@ test('Startup uploads its own public images and private PDF; Investor sees only 
   await page.locator('input[name="leaderPhotoConsent"]').check();
   await page.getByRole('button',{name:'Lưu và công bố'}).click();
   await expect.poll(()=>workflow.store.snapshot('investor').marketplace[0]?.profile.media?.cover?.startsWith('data:image/webp;base64,')).toBe(true);
-  await page.getByRole('tab',{name:'Tài liệu riêng'}).click();
-  await page.locator('input[type="file"][accept=".pdf,application/pdf"]').setInputFiles({name:'pitch.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4\nPrivate pitch')});
+  await page.getByRole('tab',{name:'Mô hình Excel & tài liệu'}).click();
+  await expect(page.getByRole('link',{name:'mẫu Excel trống'})).toHaveAttribute('href','/startup-financial-model-template.xlsx');
+  await page.locator('input[type="file"][accept*=".xlsx"]').setInputFiles({name:'pitch.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4\nPrivate pitch')});
   await page.getByRole('button',{name:'Lưu tài liệu'}).click();
   await expect(page.getByText('pitch.pdf')).toBeVisible();
+  await page.locator('input[type="file"][accept*=".xlsx"]').setInputFiles({name:'financial-model.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',buffer:readFileSync(new URL('../public/startup-financial-model-template.xlsx',import.meta.url))});
+  await page.getByRole('button',{name:'Lưu tài liệu'}).click();
+  await expect(page.getByText('financial-model.xlsx')).toBeVisible();
   await picker(page).selectOption('investor-demo');
   await page.goto('/#/startup/'+workspaceId);
   await expect(page.getByRole('img',{name:'Ảnh bìa Lotus Public'})).toBeVisible();
@@ -167,7 +174,7 @@ test('full two-party lifecycle: publish, approve, settle fees, exchange, invest,
 test('only Startup creates; Free blocks second workspace and prices match role',async({page,workflow})=>{
   await page.goto('/#/workspace/new');await expect(page.getByText('Chỉ Startup được tạo workspace.',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Tạo workspace',exact:true})).toHaveCount(0);
   await page.goto('/#/pricing');await expect(page.getByRole('heading',{name:'Investor Basic',exact:true})).toBeVisible();await expect(page.getByRole('heading',{name:'Startup Launch',exact:true})).toHaveCount(0);
-  create(workflow.store);await picker(page).selectOption('startup-demo');await expect(page.getByRole('heading',{name:'Startup trả theo case',exact:true})).toBeVisible();await expect(page.getByRole('heading',{name:'Startup Launch',exact:true})).toHaveCount(0);await page.goto('/#/workspace/new');await page.getByLabel('Tên workspace',{exact:true}).fill('Overflow');await page.getByLabel('Mục tiêu dự án').fill('Test quota');await page.getByLabel('Tên startup',{exact:true}).fill('Overflow');await page.getByLabel('Địa điểm',{exact:true}).fill('Hà Nội');await page.getByLabel('Giới thiệu công khai',{exact:true}).fill('Một mô tả startup dài để kiểm tra giới hạn.');await page.getByLabel('Mục tiêu vòng gọi vốn (triệu ₫)').fill('1000');await page.locator('form').getByRole('button',{name:'Tạo workspace',exact:true}).click();await expect(page.getByRole('alert')).toContainText('1/1');expect(workflow.store.snapshot('founder').workspaces).toHaveLength(1);
+  create(workflow.store);await picker(page).selectOption('startup-demo');await expect(page.getByRole('heading',{name:'Startup trả theo hồ sơ',exact:true})).toBeVisible();await expect(page.getByRole('heading',{name:'Startup Launch',exact:true})).toHaveCount(0);await page.goto('/#/workspace/new');await page.getByLabel('Tên workspace',{exact:true}).fill('Overflow');await page.getByLabel('Mục tiêu dự án').fill('Test quota');await page.getByLabel('Tên startup',{exact:true}).fill('Overflow');await page.getByLabel('Địa điểm',{exact:true}).fill('Hà Nội');await page.getByLabel('Giới thiệu công khai',{exact:true}).fill('Một mô tả startup dài để kiểm tra giới hạn.');await page.getByLabel('Mục tiêu vòng gọi vốn (triệu ₫)').fill('1000');await page.locator('form').getByRole('button',{name:'Tạo workspace',exact:true}).click();await expect(page.getByRole('alert')).toContainText('1/1');expect(workflow.store.snapshot('founder').workspaces).toHaveLength(1);
 });
 test('AI report and Agent use API receipts; reopening does not charge; denied access never calls provider',async({page,workflow})=>{
   const id=create(workflow.store);await page.goto('/#/analysis/'+id);await expect(page.getByLabel('Workspace có quyền truy cập')).toHaveCount(0);expect(workflow.calls).toHaveLength(0);
@@ -204,7 +211,7 @@ test('Investor plan changes preserve Free spending; Startup sees case fees and m
   await expect(page.getByRole('dialog')).toBeHidden();
   expect(workflow.store.snapshot('investor').usage.remaining).toBe(3850);
   await picker(page).selectOption('startup-demo');
-  await expect(page.getByRole('heading',{name:'Startup trả theo case',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Startup trả theo hồ sơ',exact:true})).toBeVisible();
   await expect(page.getByRole('heading',{name:'Startup Launch',exact:true})).toHaveCount(0);
   await page.setViewportSize({width:390,height:844});
   for(const route of ['home','workspace','marketplace','analysis','pricing']){

@@ -28,13 +28,13 @@ export const ROLE_PLANS = {
   },
   investor: {
     free: investorPlan('free',0,4000,0,10,5,3,3,2,2,false),
-    plus: investorPlan('plus',399000,40000,0,50,30,10,5,3,10,true),
-    pro: investorPlan('pro',699000,120000,0,200,100,50,20,6,30,true),
+    plus: investorPlan('plus',399000,20_000_000,0,50,30,10,5,3,10,true),
+    pro: investorPlan('pro',699000,30_000_000,0,200,100,50,20,6,30,true),
   },
 };
 const roles = ['founder','investor'];
 const emptyUsage = () => ({aiTokens:0,analyses:0,connections:0});
-const newLedger = date => ({free:emptyUsage(),paid:{week:weekKey(date),...emptyUsage()}});
+const newLedger = (date,role) => ({free:emptyUsage(),paid:role==='investor'?{month:monthKey(date),...emptyUsage()}:{week:weekKey(date),...emptyUsage()}});
 // Weeks start Monday at 00:00 Vietnam time (Sunday 17:00 UTC).
 export function weekKey(date=new Date()) {
   const local = new Date(date.getTime()+7*60*60*1000);
@@ -44,6 +44,7 @@ export function weekKey(date=new Date()) {
 export function nextResetAt(state,date=new Date()) {
   ensurePlanState(state,date);
   if(state.subscriptions[state.role].tier==='free') return null;
+  if(state.role==='investor')return new Date(Date.UTC(Number(monthKey(date).slice(0,4)),Number(monthKey(date).slice(5,7)),1)-7*3600000).toISOString();
   return new Date(Date.parse(`${weekKey(date)}T00:00:00+07:00`)+7*24*60*60*1000).toISOString();
 }
 // Approximate tokens: 3 serialized characters/token + 256 prompt tokens;
@@ -71,7 +72,7 @@ function ensurePlanState(state,date=new Date()) {
     if(state.plan === 'startup') state.subscriptions.founder = {tier:'plus',billing:state.billing === 'annual' ? 'annual' : 'monthly'};
     if(state.plan === 'investor') state.subscriptions.investor = {tier:'pro',billing:state.billing === 'annual' ? 'annual' : 'monthly'};
     const migratedUsage={...state.usage};
-    state.usageByRole = {founder:newLedger(date),investor:newLedger(date)};
+    state.usageByRole = {founder:newLedger(date,'founder'),investor:newLedger(date,'investor')};
     for(const w of state.workspaces || []) w.role ||= legacyOwner;
     for(const r of state.reports || []) r.role ||= state.workspaces?.find(w=>w.id===r.workspaceId)?.role || legacyOwner;
     const bucket=state.subscriptions[legacyOwner].tier==='free' ? 'free' : 'paid';
@@ -83,7 +84,7 @@ function ensurePlanState(state,date=new Date()) {
     const previous=state.usageByRole?.[role];
     if(!previous?.free || !previous?.paid) {
       state.usageByRole ||= {};
-      state.usageByRole[role]=newLedger(date);
+      state.usageByRole[role]=newLedger(date,role);
       const bucket=state.subscriptions[role].tier==='free' ? 'free' : 'paid';
       Object.assign(state.usageByRole[role][bucket],previous||emptyUsage(),{aiTokens:legacyTokens(previous,state.reports.filter(r=>r.role===role),bucket==='free')});
       if(bucket==='free') state.usageByRole[role].free.connections=Math.max(state.usageByRole[role].free.connections,(state.requests||[]).filter(r=>(r.role||'investor')===role).length);
@@ -95,9 +96,9 @@ function projectActivePlan(state,date=new Date()) {
   const selected = state.subscriptions[state.role];
   state.plan = selected.tier === 'free' ? 'free' : state.role === 'founder' ? 'startup' : 'investor';
   state.billing = selected.billing;
-  const period=selected.tier==='free' ? 'lifetime' : 'weekly';
+  const period=selected.tier==='free' ? 'lifetime' : state.role==='investor' ? 'monthly' : 'weekly';
   state.usage = state.usageByRole[state.role][selected.tier==='free'?'free':'paid'];
-  Object.assign(state.usage,{period,month:monthKey(date),resetAt:period==='lifetime'?null:new Date(Date.parse(`${state.usage.week}T00:00:00+07:00`)+7*24*60*60*1000).toISOString()});
+  Object.assign(state.usage,{period,month:monthKey(date),resetAt:period==='lifetime'?null:nextResetAt(state,date)});
   return state;
 }
 export function getPlan(state) {
@@ -291,7 +292,11 @@ export function freshState() { return refreshUsage(initialState()); }
 export function refreshUsage(state, date=new Date()) {
   ensurePlanState(state,date);
   const week=weekKey(date);
-  for(const role of roles) if(state.usageByRole[role].paid.week!==week) state.usageByRole[role].paid={week,...emptyUsage()};
+  if(state.usageByRole.founder.paid.week!==week) state.usageByRole.founder.paid={week,...emptyUsage()};
+  const month=monthKey(date),paid=state.usageByRole.investor.paid;
+  const monthStart=Date.parse(`${month}-01T00:00:00+07:00`);
+  const legacyWeekStart=paid.week?Date.parse(`${paid.week}T00:00:00+07:00`):NaN;
+  if(paid.month!==month)state.usageByRole.investor.paid={month,...(legacyWeekStart<=date.getTime()&&legacyWeekStart+7*86400000>monthStart?{aiTokens:paid.aiTokens,analyses:paid.analyses,connections:paid.connections}:emptyUsage())};
   return projectActivePlan(state,date);
 }
 export function canUse(state,kind,workspaceId) { return getUsage(state,kind,workspaceId).allowed; }
@@ -341,7 +346,7 @@ export function validateState(s) {
       for(const bucket of buckets) {
         if(!bucket || ['analyses','connections'].some(key=>!Number.isSafeInteger(bucket[key]) || bucket[key]<0) || (bucket.aiTokens!==undefined && (!Number.isSafeInteger(bucket.aiTokens) || bucket.aiTokens<0))) throw new Error('Bộ đếm sử dụng không hợp lệ.');
       }
-      if(ledger.paid && !/^\d{4}-\d{2}-\d{2}$/.test(ledger.paid.week)) throw new Error('Tuần sử dụng không hợp lệ.');
+      if(ledger.paid && (role==='founder'?!/^\d{4}-\d{2}-\d{2}$/.test(ledger.paid.week):!/^\d{4}-(0[1-9]|1[0-2])$/.test(ledger.paid.month||'')&&!/^\d{4}-\d{2}-\d{2}$/.test(ledger.paid.week||''))) throw new Error('Kỳ sử dụng không hợp lệ.');
     }
   }
   return refreshUsage(s);

@@ -17,7 +17,7 @@ test('technical plans and the investor price and capacity catalog are distinct',
     ['Startup Free',2000,0],['Startup Launch',20000,199000],['Startup Scale',60000,399000],
   ]);
   assert.deepEqual(Object.values(ROLE_PLANS.investor).map(p=>[p.name,p.aiTokens,p.price]),[
-    ['Investor Trial',4000,0],['Investor Basic',40000,399000],['Investor Pro',120000,699000],
+    ['Investor Trial',4000,0],['Investor Basic',20_000_000,399000],['Investor Pro',30_000_000,699000],
   ]);
   assert.deepEqual(Object.values(ROLE_PLANS.investor).map(p=>[p.annualPrice,p.watchlist,p.portfolio,p.reportCadence]),[
     [0,3,3,'1 lần/quý'],[3999000,5,10,'1 lần/tháng'],[6999000,20,50,'2–3 lần/tháng'],
@@ -163,22 +163,21 @@ test('Free tokens and connections never replenish across weeks, months or years'
   }
 });
 
-test('Paid credits reset for both roles only on Monday 00:00 Vietnam, without carryover',()=>{
+test('Founder paid credits reset on Monday while investor paid credits reset at month start in Vietnam',()=>{
   const state=stateFor('investor','plus');
-  const before=new Date('2026-11-08T16:59:59Z'), boundary=new Date('2026-11-08T17:00:00Z');
-  refreshUsage(state,before);
-  assert.equal(weekKey(before),'2026-11-02');
-  assert.equal(weekKey(boundary),'2026-11-09');
-  for(const role of ['founder','investor']) Object.assign(state.usageByRole[role].paid,{aiTokens:1234,connections:1,analyses:1});
-  const workspaceCount=state.workspaces.length;
-  refreshUsage(state,before);
-  assert.equal(state.usage.aiTokens,1234);
-  assert.equal(nextResetAt(state,before),'2026-11-08T17:00:00.000Z');
-  refreshUsage(state,boundary);
-  for(const role of ['founder','investor']) assert.deepEqual(state.usageByRole[role].paid.aiTokens,0);
-  assert.equal(state.workspaces.length,workspaceCount);
-  assert.equal(state.usage.connections,0);
-  assert.equal(nextResetAt(state,boundary),'2026-11-15T17:00:00.000Z');
+  const sunday=new Date('2026-11-08T16:59:59Z'),monday=new Date('2026-11-08T17:00:00Z');
+  refreshUsage(state,sunday);
+  assert.equal(weekKey(sunday),'2026-11-02');
+  Object.assign(state.usageByRole.founder.paid,{aiTokens:1234,connections:1,analyses:1});
+  Object.assign(state.usageByRole.investor.paid,{aiTokens:1234,connections:1,analyses:1});
+  assert.equal(nextResetAt(state,sunday),'2026-11-30T17:00:00.000Z');
+  refreshUsage(state,monday);
+  assert.equal(state.usageByRole.founder.paid.aiTokens,0);
+  assert.equal(state.usageByRole.investor.paid.aiTokens,1234);
+  assert.equal(state.usage.period,'monthly');
+  refreshUsage(state,new Date('2026-11-30T17:00:00Z'));
+  assert.equal(state.usageByRole.investor.paid.aiTokens,0);
+  assert.equal(nextResetAt(state,new Date('2026-11-30T17:00:00Z')),'2026-12-31T17:00:00.000Z');
 });
 
 test('Downgrade preserves workspace content and blocks additional resources',()=>{

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { ROLE_PLANS, weekKey, parseCSV, analyze } from '../domain.js';
+import { ROLE_PLANS, weekKey, monthKey, parseCSV, analyze } from '../domain.js';
 import { DEEP_DILIGENCE_KEYS } from '../diligence.js';
 import { createInvestorCaseListings, createMarketplaceStartups, LEGACY_MARKETPLACE_IDS } from './marketplace-startups.mjs';
 
@@ -43,9 +43,13 @@ function publicImage(value, label, maxBytes) {
 function privateDocument(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw error(400, 'INVALID', 'Tài liệu không hợp lệ.');
   const name = text(value.name, 'Tên tài liệu', 1, 120);
-  if (!/\.pdf$/i.test(name) || typeof value.data !== 'string' || !/^data:application\/pdf;base64,(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value.data)) throw error(400, 'INVALID', 'Chỉ nhận tài liệu PDF.');
-  const bytes = Buffer.from(value.data.slice('data:application/pdf;base64,'.length), 'base64');
-  if (bytes.length < 5 || bytes.length > 1_500_000 || bytes.toString('ascii', 0, 5) !== '%PDF-') throw error(400, 'INVALID', 'PDF không hợp lệ hoặc vượt 1,5 MB.');
+  const mimeType = /\.pdf$/i.test(name) ? 'application/pdf' : /\.xlsx$/i.test(name) ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : '';
+  const prefix = `data:${mimeType};base64,`;
+  if (!mimeType || typeof value.data !== 'string' || !value.data.startsWith(prefix) || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value.data.slice(prefix.length))) throw error(400, 'INVALID', 'Chỉ nhận PDF hoặc Excel XLSX.');
+  const bytes = Buffer.from(value.data.slice(prefix.length), 'base64');
+  const pdf = mimeType === 'application/pdf';
+  if (bytes.length < 5 || bytes.length > 1_500_000 || (pdf ? bytes.toString('ascii', 0, 5) !== '%PDF-' : bytes.toString('ascii', 0, 4) !== 'PK\x03\x04')) throw error(400, 'INVALID', 'Tài liệu không hợp lệ hoặc vượt 1,5 MB.');
+  if (!pdf && (!bytes.includes(Buffer.from('[Content_Types].xml')) || !bytes.includes(Buffer.from('xl/workbook.xml')) || bytes.includes(Buffer.from('vbaProject.bin')))) throw error(400, 'INVALID', 'XLSX không hợp lệ hoặc chứa macro.');
   return { name, data:value.data };
 }
 function normalizeMedia(value) {
@@ -167,7 +171,7 @@ function validatedState(value) {
     if (!state.accounts.founder || !state.accounts.investor) throw backupInvalid();
     if(state.accounts.investor2===undefined)state.accounts.investor2=freshData().accounts.investor2;
     const actorId=(value,role)=>{if(typeof value!=='string'||!Object.hasOwn(DEMO_USERS,value)||role&&DEMO_USERS[value].role!==role)throw backupInvalid();return value;};
-    const bucketValid=value=>value==='free'||typeof value==='string'&&/^week:\d{4}-\d{2}-\d{2}$/.test(value)&&weekKey(new Date(`${value.slice(5)}T12:00:00+07:00`))===value.slice(5);
+    const bucketValid=value=>value==='free'||typeof value==='string'&&(/^week:\d{4}-\d{2}-\d{2}$/.test(value)&&weekKey(new Date(`${value.slice(5)}T12:00:00+07:00`))===value.slice(5)||/^month:\d{4}-(0[1-9]|1[0-2])$/.test(value));
     for (const [userId,account] of Object.entries(state.accounts)) {
       keys(account,['tier','billing','ledgers','watchlist','compare']);
       if(typeof account.tier!=='string'||!Object.hasOwn(ROLE_PLANS[DEMO_USERS[userId].role],account.tier)||!['monthly','annual'].includes(account.billing)||!object(account.ledgers)||!Object.hasOwn(account.ledgers,'free'))throw backupInvalid();
@@ -222,8 +226,9 @@ function validatedState(value) {
       keys(item,['id','workspaceId','ownerId','title','summary','industry','stage','submittedAt','createdAt','updatedAt']);
       const parent=project(item.workspaceId);actorId(item.ownerId,'founder');if(item.ownerId!==parent.ownerId)throw backupInvalid();
       text(item.title,'Tên case',5,100);text(item.summary,'Mô tả case',20,2000);text(item.industry,'Lĩnh vực',2,80);
-      if(!['draft','awaiting_fee_configuration'].includes(item.stage))throw backupInvalid();
-      if(item.stage==='draft'&&item.submittedAt!==null||item.stage==='awaiting_fee_configuration'&&item.submittedAt===null)throw backupInvalid();
+      if(item.stage==='awaiting_fee_configuration')item.stage='awaiting_payment';
+      if(!['draft','awaiting_payment'].includes(item.stage))throw backupInvalid();
+      if(item.stage==='draft'&&item.submittedAt!==null||item.stage==='awaiting_payment'&&item.submittedAt===null)throw backupInvalid();
       if(item.submittedAt!==null)timestamp(item.submittedAt);timestamp(item.createdAt);timestamp(item.updatedAt);
     }
     const activeRequests=new Set(),paymentIds=new Set(),requestCounts={};
@@ -274,7 +279,7 @@ function validatedState(value) {
     for(const r of state.reservations) {
       keys(r,['id','kind','userId','bucketKey','reservedTokens','workspaceId','name','rows','analysis','status','createdAt','actualTokens','finishedAt','failedAt','reportId','messageId']);actorId(r.userId);optionalWorkspace(r.workspaceId,r.userId);
       if(r.kind===undefined)r.kind='analysis';if(!['analysis','chat'].includes(r.kind)||!bucketValid(r.bucketKey)||!Object.hasOwn(state.accounts[r.userId].ledgers,r.bucketKey))throw backupInvalid();
-      integer(r.reservedTokens,'Token tạm giữ',1);timestamp(r.createdAt);if(r.bucketKey!=='free'&&r.bucketKey!==`week:${weekKey(new Date(r.createdAt))}`)throw backupInvalid();
+      integer(r.reservedTokens,'Token tạm giữ',1);timestamp(r.createdAt);if(r.bucketKey!=='free'&&r.bucketKey!==`week:${weekKey(new Date(r.createdAt))}`&&r.bucketKey!==`month:${monthKey(new Date(r.createdAt))}`)throw backupInvalid();
       if(!['pending','uncertain','completed','failed'].includes(r.status))throw backupInvalid();
       if(r.kind==='analysis'){text(r.name,'Tên báo cáo',1,255);r.analysis=checkedAnalysis(r.analysis);if(!sameValue(r.rows,r.analysis.rows))throw backupInvalid();}
       else if(r.name!==undefined||r.rows!==undefined||r.analysis!==undefined)throw backupInvalid();
@@ -339,15 +344,21 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
     return DEMO_USERS[userId];
   }
   function plan(state, userId) { return { ...ROLE_PLANS[user(userId).role][state.accounts[userId].tier], billing: state.accounts[userId].billing }; }
-  function bucketKey(state, userId) { return state.accounts[userId].tier === 'free' ? 'free' : `week:${weekKey(now())}`; }
+  function bucketKey(state, userId) { return state.accounts[userId].tier === 'free' ? 'free' : user(userId).role==='investor' ? `month:${monthKey(now())}` : `week:${weekKey(now())}`; }
+  function initialBucket(state,userId,key){
+    if(!key.startsWith('month:'))return freshBucket();
+    const month=key.slice(6),start=Date.parse(`${month}-01T00:00:00+07:00`),end=Date.UTC(Number(month.slice(0,4)),Number(month.slice(5,7)),1)-7*3600000;
+    const weeks=Object.entries(state.accounts[userId].ledgers).filter(([name])=>name.startsWith('week:')&&Date.parse(`${name.slice(5)}T00:00:00+07:00`)+7*86400000>start&&Date.parse(`${name.slice(5)}T00:00:00+07:00`)<end);
+    return {aiTokens:weeks.reduce((sum,[,value])=>sum+value.aiTokens,0),connections:weeks.reduce((sum,[,value])=>sum+value.connections,0),analyses:weeks.reduce((sum,[,value])=>sum+value.analyses,0)};
+  }
   function bucket(state, userId, key = bucketKey(state, userId)) {
-    state.accounts[userId].ledgers[key] ||= freshBucket();
+    state.accounts[userId].ledgers[key] ||= initialBucket(state,userId,key);
     return state.accounts[userId].ledgers[key];
   }
   function usage(state, userId) {
-    const selected = plan(state, userId), key = bucketKey(state, userId), current = state.accounts[userId].ledgers[key] || freshBucket();
-    const period = selected.tier === 'free' ? 'lifetime' : 'weekly';
-    const resetAt = period === 'lifetime' ? null : new Date(Date.parse(`${key.slice(5)}T00:00:00+07:00`) + 7*86400000).toISOString();
+    const selected = plan(state, userId), key = bucketKey(state, userId), current = state.accounts[userId].ledgers[key] || initialBucket(state,userId,key);
+    const period = selected.tier === 'free' ? 'lifetime' : user(userId).role==='investor' ? 'monthly' : 'weekly';
+    const resetAt = period === 'lifetime' ? null : period==='weekly' ? new Date(Date.parse(`${key.slice(5)}T00:00:00+07:00`) + 7*86400000).toISOString() : new Date(Date.UTC(Number(key.slice(6,10)),Number(key.slice(11,13)),1)-7*3600000).toISOString();
     const awaiting=state.reservations.filter(r=>r.userId===userId && r.bucketKey===key && ['pending','uncertain'].includes(r.status));
     return { used: current.aiTokens, limit: selected.aiTokens, remaining: Math.max(0, selected.aiTokens-current.aiTokens), period, resetAt, connections: { used: current.connections, limit: selected.connections, remaining: Math.max(0, selected.connections-current.connections) }, analyses: current.analyses, pendingTokens:awaiting.reduce((sum,r)=>sum+r.reservedTokens,0), pendingAnalyses:awaiting.length };
   }
@@ -472,9 +483,9 @@ export function createWorkflowStore({ filePath, now = () => new Date(), initialD
           item.title=text(action.title,'Tên case',5,100);item.summary=text(action.summary,'Mô tả case',20,2000);
         }else if(action.type==='submit-case'){
           if(item.stage!=='draft')throw error(409,'CONFLICT','Case đã được gửi.');
-          item.stage='awaiting_fee_configuration';item.submittedAt=stamp;
+          item.stage='awaiting_payment';item.submittedAt=stamp;
         }else{
-          if(item.stage!=='awaiting_fee_configuration')throw error(409,'CONFLICT','Chỉ rút case đang chờ cấu hình phí.');
+          if(item.stage!=='awaiting_payment')throw error(409,'CONFLICT','Chỉ rút case đang chờ mở thanh toán.');
           item.stage='draft';item.submittedAt=null;
         }
         item.updatedAt=stamp;break;

@@ -49,6 +49,25 @@ test('founder media is public only after publishing; private documents follow li
   assert.equal(createWorkflowStore({initialData:store.exportData()}).getAttachment('founder',project.id,document.id).data,pdf);
 });
 
+test('startup financial model XLSX stays private, downloads after access and rejects invalid files',()=>{
+  const store=createWorkflowStore(),project=create(store);
+  const bytes=fs.readFileSync(new URL('../public/startup-financial-model-template.xlsx',import.meta.url));
+  const xlsx=`data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${bytes.toString('base64')}`;
+  store.act('founder',{type:'add-attachment',workspaceId:project.id,name:'financial-model.xlsx',data:xlsx});
+  const document=store.snapshot('founder').workspaces[0].attachments[0];
+  assert.equal(document.data,undefined);
+  assert.throws(()=>store.getAttachment('investor',project.id,document.id),code('FORBIDDEN'));
+  assert.throws(()=>store.act('founder',{type:'add-attachment',workspaceId:project.id,name:'fake.xlsx',data:`data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${Buffer.from('PK\x03\x04fake').toString('base64')}`}),code('INVALID'));
+  store.act('founder',{type:'publish',workspaceId:project.id});
+  assert.equal(JSON.stringify(store.snapshot('investor')).includes('financial-model.xlsx'),false);
+  approveAndPay(store,project.id);
+  assert.equal(store.getAttachment('investor',project.id,document.id).data,xlsx);
+  const restored=createWorkflowStore({initialData:store.exportData()});
+  assert.equal(restored.getAttachment('investor',project.id,document.id).data,xlsx);
+  store.act('founder',{type:'decide-access',requestId:store.snapshot('founder').requests[0].id,decision:'revoked'});
+  assert.throws(()=>store.getAttachment('investor',project.id,document.id),code('FORBIDDEN'));
+});
+
 test('five public case fields stay visible while twenty diligence answers require approval',()=>{
   const store=createWorkflowStore();
   const fullProfile={...profile,traction:'2 khách hàng thử nghiệm trong tháng 10; chưa có doanh thu.',customerReferences:'Công ty A\nCông ty B',market:'Doanh nghiệp nhỏ tại TP.HCM; cần đối chiếu các giải pháp thay thế.',team:'Hai founder phụ trách sản phẩm và bán hàng.',useOfFunds:'Phát triển sản phẩm và thử kênh bán hàng.'};
@@ -162,7 +181,7 @@ test('connection receipts are trusted, exact, idempotent and required from both 
   assert.equal(createWorkflowStore({initialData:legacy}).snapshot('investor2').workspaces.length,0);
 });
 
-test('case drafts persist, stay private and cannot skip fee or mentor steps',()=>{
+test('case drafts persist, stay private and wait for verified payment',()=>{
   const store=createWorkflowStore(),project=create(store);
   const created=store.act('founder',{type:'create-case',workspaceId:project.id,title:'Gọi vốn Seed',summary:'Mở rộng sản phẩm cho doanh nghiệp nhỏ.'});
   const item=created.cases[0];
@@ -170,7 +189,7 @@ test('case drafts persist, stay private and cannot skip fee or mentor steps',()=
   assert.equal(store.snapshot('investor').cases.length,0);
   assert.throws(()=>store.act('investor',{type:'submit-case',caseId:item.id,ownerId:'founder'}),code('FORBIDDEN'));
   const submitted=store.act('founder',{type:'submit-case',caseId:item.id,stage:'published',paymentConfirmed:true,mentorApproved:true}).cases[0];
-  assert.equal(submitted.stage,'awaiting_fee_configuration');
+  assert.equal(submitted.stage,'awaiting_payment');
   assert.ok(submitted.submittedAt);
   assert.equal(store.snapshot('investor').cases.length,0);
   assert.throws(()=>store.act('founder',{type:'update-case',caseId:item.id,title:'Đổi tên case',summary:item.summary}),code('CONFLICT'));
@@ -178,7 +197,9 @@ test('case drafts persist, stay private and cannot skip fee or mentor steps',()=
   assert.throws(()=>store.act('founder',{type:'confirm-listing-payment',caseId:item.id}),code('INVALID'));
   assert.throws(()=>store.act('founder',{type:'complete-mentor',caseId:item.id}),code('INVALID'));
   const restored=createWorkflowStore({initialData:store.exportData()});
-  assert.equal(restored.snapshot('founder').cases[0].stage,'awaiting_fee_configuration');
+  assert.equal(restored.snapshot('founder').cases[0].stage,'awaiting_payment');
+  const oldBackup=store.exportData();oldBackup.cases[0].stage='awaiting_fee_configuration';
+  assert.equal(createWorkflowStore({initialData:oldBackup}).snapshot('founder').cases[0].stage,'awaiting_payment');
   assert.equal(restored.snapshot('investor').cases.length,0);
   const forged=store.exportData();forged.cases[0].stage='published';
   assert.throws(()=>createWorkflowStore({initialData:forged}),code('BACKUP_INVALID'));
@@ -259,6 +280,24 @@ test('Free lifetime and shared paid weekly ledgers survive plan changes and Viet
   store.act('founder',{type:'change-plan',tier:'plus'});assert.equal(store.snapshot('founder').usage.used,0);
   assert.equal(store.snapshot('founder').usage.resetAt,'2026-11-08T17:00:00.000Z');
   clock=new Date('2028-01-01T00:00:00Z');store.act('founder',{type:'change-plan',tier:'free'});assert.equal(store.snapshot('founder').usage.used,700);assert.equal(store.snapshot('founder').usage.resetAt,null);
+});
+
+test('investor paid token budget resets monthly in Vietnam and keeps usage across plan changes',()=>{
+  let clock=new Date('2026-11-30T16:59:00Z');
+  const store=createWorkflowStore({now:()=>clock});
+  store.act('investor',{type:'change-plan',tier:'plus'});
+  assert.equal(store.snapshot('investor').usage.limit,20_000_000);
+  assert.equal(store.snapshot('investor').usage.period,'monthly');
+  const reservation=store.beginAnalysis('investor',{csv:SAMPLE_CSV,inputTokensEstimate:500,maxOutputTokens:500});
+  store.finishAnalysis('investor',reservation.id,aiResult(700));
+  assert.equal(store.snapshot('investor').usage.used,700);
+  store.act('investor',{type:'change-plan',tier:'pro'});
+  assert.equal(store.snapshot('investor').usage.limit,30_000_000);
+  assert.equal(store.snapshot('investor').usage.used,700);
+  assert.equal(store.snapshot('investor').usage.resetAt,'2026-11-30T17:00:00.000Z');
+  clock=new Date('2026-11-30T17:00:00Z');
+  assert.equal(store.snapshot('investor').usage.used,0);
+  assert.equal(store.snapshot('investor').usage.resetAt,'2026-12-31T17:00:00.000Z');
 });
 
 test('settlement after a new week or after a downgrade debits the reserved period only',()=>{

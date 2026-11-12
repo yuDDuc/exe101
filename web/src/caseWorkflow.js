@@ -1,8 +1,9 @@
 export const CASE_WORKFLOW_KEY = '2g2bt-demo-case-workflow-v1';
 export const CASE_CONNECTION_TOTAL_VND = 500000;
 export const CASE_CONNECTION_SHARE_VND = CASE_CONNECTION_TOTAL_VND / 2;
-// The startup listing fee is deliberately unset until the business sets a price.
-export const CASE_LISTING_FEE_VND = null;
+// Public prices from the team's financial plan; checkout remains unavailable.
+export const STARTUP_LISTING_FEE_VND = 899000;
+export const AI_PITCHDECK_REVIEW_FEE_VND = 200000;
 
 const makeId = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const stamp = () => new Date().toISOString();

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle2, CircleDashed, CreditCard, FileText, MessageSquare, Plus, ShieldCheck, Sparkles } from 'lucide-react';
-import { CASE_CONNECTION_SHARE_VND, CASE_CONNECTION_TOTAL_VND, CASE_LISTING_FEE_VND, caseIsConnected } from './caseWorkflow.js';
+import { CASE_CONNECTION_SHARE_VND, CASE_CONNECTION_TOTAL_VND, STARTUP_LISTING_FEE_VND, caseIsConnected } from './caseWorkflow.js';
 
 const money = amount => new Intl.NumberFormat('vi-VN').format(amount) + 'đ';
 const card = 'rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6';
@@ -12,7 +12,7 @@ const requestText = { pending: 'Chờ Startup đồng ý', approved: 'Đã đồ
 
 function FeeNotice() {
   return <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-    <strong>Phí đăng case: {CASE_LISTING_FEE_VND === null ? 'chưa chốt' : money(CASE_LISTING_FEE_VND)}.</strong> Chưa mở thanh toán. Mức phí cần được cấu hình trước khi thu tiền.
+    <strong>Phí niêm yết một hồ sơ Startup: {money(STARTUP_LISTING_FEE_VND)} / 12 tháng.</strong> Chưa mở thanh toán; thao tác trong chế độ dùng thử không thu tiền.
   </div>;
 }
 

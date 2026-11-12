@@ -49,7 +49,7 @@ test('investor watchlist and compare quotas are enforced at both entry points',a
   await page.goto('/#/marketplace');for(let i=0;i<3;i++)await page.getByRole('button',{name:'So sánh',exact:true}).first().click();await expect(page.getByRole('dialog')).toContainText('startup so sánh');expect((await read(page)).compare).toHaveLength(2);
 });
 test('pricing follows the active role and mobile pages fit the viewport',async({page})=>{
-  await page.goto('/#/pricing');await expect(page.getByRole('heading',{name:'Startup Launch',exact:true})).toHaveCount(0);await page.getByLabel('Chọn vai trò').selectOption('startup-demo');await expect(page.getByRole('heading',{name:'Startup trả theo case',exact:true})).toBeVisible();expect((await read(page)).role).toBe('founder');await expect(page.getByRole('heading',{name:'Investor Basic',exact:true})).toHaveCount(0);
+  await page.goto('/#/pricing');await expect(page.getByRole('heading',{name:'Startup Launch',exact:true})).toHaveCount(0);await page.getByLabel('Chọn vai trò').selectOption('startup-demo');await expect(page.getByRole('heading',{name:'Startup trả theo hồ sơ',exact:true})).toBeVisible();expect((await read(page)).role).toBe('founder');await expect(page.getByRole('heading',{name:'Investor Basic',exact:true})).toHaveCount(0);
   await page.screenshot({path:'../tmp/pricing-startup-final.png',fullPage:true});
   await page.getByLabel('Chọn vai trò').selectOption('investor-demo');
   const planCard = name => page.locator('section').filter({has:page.getByRole('heading',{name,exact:true})}).first();
